@@ -13,6 +13,7 @@ import { loadCandidateByToken, recordSelection } from '../src/lib/selection.js';
 
 async function resetDb() {
   // Order respects FK constraints.
+  await prisma.event.deleteMany();
   await prisma.selection.deleteMany();
   await prisma.token.deleteMany();
   await prisma.shortlist.deleteMany();

@@ -20,6 +20,8 @@ export interface CandidateEmailInput {
   /** The candidate's own shortlisted position titles (NOT the full 7). */
   positionTitles: string[];
   selectionUrl: string;
+  /** Optional per-token open-tracking pixel URL (best-effort — see addendum §2). */
+  pixelUrl?: string;
 }
 
 /** Natural-language list join, e.g. ["A"]→"A", ["A","B"]→"A and B", ["A","B","C"]→"A, B and C". */
@@ -44,6 +46,9 @@ export function candidateEmailSubject(positionTitles: string[]): string {
 export function candidateEmailHtml(input: CandidateEmailInput): string {
   const url = esc(input.selectionUrl);
   const titles = esc(formatPositionList(input.positionTitles));
+  const pixel = input.pixelUrl
+    ? `<img src="${esc(input.pixelUrl)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
+    : '';
 
   return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -208,6 +213,7 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
       </td>
     </tr>
   </table>
+  ${pixel}
 </body>
 </html>`;
 }

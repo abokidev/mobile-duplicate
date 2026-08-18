@@ -18,6 +18,8 @@ link sent by email, ahead of the aptitude test.
 > - `POSITIONS_SEED.md` — the 7 confirmed position titles.
 > - `EMAIL_COPY_CORRECTION_ADDENDUM.md` — the email uses the approved copy verbatim
 >   (greeting `Dear Applicant,`, confirmed with Adekunle).
+> - `ADMIN_UPLOAD_TRACKING_ADDENDUM.md` — admin CSV upload (replaces the seed
+>   hand-off), delivery/open tracking, and manual reminders. See below.
 
 ---
 
@@ -67,6 +69,41 @@ Per **`DEADLINE_ADDENDUM.md`**, which overrides PSA **FR5**:
   and the generic error covers only **invalid** and **already-used** tokens.
 
 ---
+
+## Admin upload, tracking & reminders (Admin Upload addendum)
+
+The admin dashboard (`/admin`) now runs the whole campaign — no manual seed hand-off:
+
+1. **Upload** (`/admin/upload`): a CSV of `name, email, positions` (positions
+   semicolon-separated, matching the seeded titles). The server **validates before
+   writing** and shows a preview — total rows, how many will be emailed (multi-shortlisted)
+   vs auto-recorded (single-shortlisted), and every bad row with its reason (missing/
+   malformed email, unknown position title, duplicate email). Bad rows are downloadable as
+   an error report and never block the good rows. **Nothing is written until you confirm.**
+2. **Commit**: multi-shortlisted → Candidate + Shortlist + Token; single-shortlisted →
+   Candidate + Shortlist + auto Selection (FR6), no token, no email.
+3. **Send is separate** from upload: click **Send invitations** (with a count-confirm step)
+   to fire the ZeptoMail batch. Failed sends are logged and surfaced for retry.
+4. **Tracking** per token: `Sent → Opened (best-effort) → Visited (reliable) → Submitted`,
+   each with a timestamp (`events` table). The dashboard states plainly that **“Opened”**
+   (email tracking pixel) is unreliable — Apple Mail Privacy Protection and mail proxies
+   pre-fetch images — while **“Visited”** (a real page load) is the trustworthy signal.
+5. **Reminders** (`/admin/remind`): a manual, count-confirmed button that emails only
+   candidates whose token is still `unused`. Uses a **shorter, urgency-framed reminder
+   email** (`src/lib/reminderEmail.ts`) — ⚠️ **draft copy pending Adekunle's approval**,
+   flagged as such in the dashboard. `reminder_count` / `last_reminder_sent_at` are tracked
+   per token to avoid spamming.
+
+### Security note — retained delivery token
+
+The separated upload→send flow, same-link reminders, and send retries all require the
+raw token to survive between import and submission (you cannot re-email a link you only
+stored as a hash). The raw token is therefore held **encrypted at rest** (AES-256-GCM,
+key derived from `TOKEN_HMAC_SECRET`; `src/lib/crypto.ts`) in `tokens.delivery_enc`, is
+**never used for verification** (that path is always the salted hash), and is **purged the
+moment the candidate submits**. This is a deliberate, bounded change from the PSA's
+"raw token never stored" line, forced by the admin-driven send/reminder features; flag it
+if that trade-off needs review.
 
 ## Getting started
 
@@ -209,13 +246,17 @@ npm test        # runs prisma db push against TEST_DATABASE_URL, then the suite
 ## Project layout
 
 ```
-prisma/schema.prisma      Data model: Candidates, Positions, Shortlist, Tokens, Selections, Admin
-src/lib/                  env, db, token hashing, selection service (FR2/FR4), html + email
+prisma/schema.prisma      Data model: Candidates, Positions, Shortlist, Tokens, Selections,
+                          Events (tracking), Admin
+src/lib/                  env, db, token hashing, crypto (delivery token), selection service
+                          (FR2/FR4), html, email + reminderEmail, zeptomail (HTTP API)
 src/pages/candidate.ts    Instructions, selection, confirm, confirmation, generic message
-src/routes/               candidate flow + admin routes
-src/admin/                auth, dashboard data + CSV, dashboard pages
-src/server.ts             Fastify app assembly (rate limit, cookies, static, security headers)
+src/routes/               candidate flow (+ tracking pixel, page_visited) + admin routes
+src/admin/                auth, dashboard data + CSV, pages, import (CSV validate/commit),
+                          sending (send + reminder batches), events
+src/server.ts             Fastify app assembly (rate limit, cookies, multipart, static, headers)
 scripts/                  seed, issueTokens, sendEmails, previewEmail, createAdmin
-tests/concurrency.test.ts The one-time-use proof + FR2/FR7/FR8 checks
-public/                   styles.css (design system), app.js (progressive enhancement)
+tests/                    concurrency (one-time-use proof), import (CSV validation),
+                          tracking (encryption + purge), adminFlow (upload→commit→tracking)
+public/                   styles.css (mobile-first design system), app.js (progressive enhancement)
 ```

@@ -4,6 +4,7 @@ import { hashToken } from './token.js';
 
 export interface CandidateView {
   candidateId: number;
+  tokenId: number;
   firstName: string;
   fullName: string;
   email: string;
@@ -42,6 +43,7 @@ export async function loadCandidateByToken(rawToken: string): Promise<CandidateV
 
   return {
     candidateId: c.id,
+    tokenId: token.id,
     firstName,
     fullName: c.name,
     email: c.email,
@@ -140,11 +142,15 @@ export async function recordSelection(params: {
         include: { position: true },
       });
 
-      // 5. Flip the token used, in the SAME transaction.
+      // 5. Flip the token used, in the SAME transaction. Purge the encrypted
+      //    delivery copy of the raw token now that it can never need re-sending.
       await tx.token.update({
         where: { id: tokenRow.id },
-        data: { status: 'used', usedAt: new Date() },
+        data: { status: 'used', usedAt: new Date(), deliveryEnc: null },
       });
+
+      // Record the submission on the timeline (best-effort, same transaction).
+      await tx.event.create({ data: { tokenId: tokenRow.id, type: 'submitted' } });
 
       return {
         ok: true,

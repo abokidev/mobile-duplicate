@@ -1,4 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { prisma } from '../lib/db.js';
+import { hashToken } from '../lib/token.js';
+import { logEventOnce } from '../admin/events.js';
 import { loadCandidateByToken, recordSelection } from '../lib/selection.js';
 import {
   confirmedPage,
@@ -47,13 +50,36 @@ export async function candidateRoutes(app: FastifyInstance) {
     },
   };
 
+  // Transparent 1x1 GIF for the open-tracking pixel.
+  const PIXEL_GIF = Buffer.from(
+    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    'base64'
+  );
+
   // 1. Instructions page.
   app.get<{ Params: TokenParams }>('/s/:token', lookupRateLimit, async (req, reply) => {
     const candidate = await loadCandidateByToken(req.params.token);
     if (!candidate) return generic(reply);
     // Already used → generic message (FR8). Unused → instructions.
     if (candidate.existingSelection) return generic(reply);
+    // Reliable engagement signal (addendum §2): a real click-through loaded the page.
+    // Awaited so this trustworthy signal is durably recorded; logEventOnce never throws.
+    await logEventOnce(candidate.tokenId, 'page_visited');
     return sendHtml(reply, 200, instructionsPage(candidate, req.params.token));
+  });
+
+  // Open-tracking pixel (addendum §2 — best-effort; pre-fetching inflates this).
+  // Always returns the GIF, whether or not the token is known, to avoid leaking.
+  app.get<{ Params: TokenParams }>('/e/:token/pixel.gif', lookupRateLimit, async (req, reply) => {
+    const token = await prisma.token
+      .findUnique({ where: { tokenHash: hashToken(req.params.token) }, select: { id: true } })
+      .catch(() => null);
+    if (token) await logEventOnce(token.id, 'opened');
+    reply
+      .header('content-type', 'image/gif')
+      .header('cache-control', 'no-store, no-cache, must-revalidate, private')
+      .header('pragma', 'no-cache')
+      .send(PIXEL_GIF);
   });
 
   // 2. Selection page. GET + POST both re-show it (reopen-resilient — NFR).
