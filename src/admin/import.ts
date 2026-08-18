@@ -42,6 +42,9 @@ export interface ValidationResult {
 
 /** Minimal CSV parser handling quoted fields and embedded commas/newlines. */
 export function parseCsv(text: string): { header: string[]; rows: string[][] } {
+  // Strip a leading UTF-8 BOM (Excel/Windows exports add one, which would
+  // otherwise corrupt the first header cell).
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
   const rows: string[][] = [];
   let field = '';
   let record: string[] = [];

@@ -71,7 +71,7 @@ beforeEach(async () => {
 
 const CSV =
   'name,email,positions\n' +
-  'Adaeze Okafor,adaeze@example.com,Process Technician;Electrical Specialist\n' + // multi
+  'Adaeze Okafor,adaeze@example.com,Process Technician; Electrical Specialist\n' + // multi (exact row, space after ;)
   'Bem Aïcha,bem@example.com,Mechanical Specialist\n' + // single
   'Bad Row,not-an-email,Process Technician\n' + // error
   'Chidi Uzo,chidi@example.com,Unknown Role\n'; // error (unknown title)
@@ -166,6 +166,16 @@ describe('admin upload → preview → commit → tracking (in-process)', () => 
     // one multi-shortlisted candidate is awaiting its first email
     expect(res.body).toContain('Send invitation emails?');
     expect(res.body).toMatch(/email <strong>1<\/strong>/);
+  });
+
+  it('shows a clear "seed positions first" message when the positions table is empty', async () => {
+    await prisma.shortlist.deleteMany();
+    await prisma.position.deleteMany();
+    const res = await app.inject({ method: 'POST', url: '/admin/upload/preview', ...multipart(CSV) });
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toContain('npm run seed:positions');
+    // does not fall through to the confusing per-row "unknown position title" preview
+    expect(res.body).not.toContain('Review before import');
   });
 
   it('exports a CSV with the tracking columns', async () => {
