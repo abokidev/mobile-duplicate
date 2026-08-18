@@ -75,6 +75,10 @@ function parseCsv(text: string): Row[] {
     }));
 }
 
+function firstNameOf(name: string): string {
+  return name.trim().split(/\s+/)[0] || name || 'there';
+}
+
 function latestTokensFile(): string {
   const dir = join(process.cwd(), 'out');
   const files = readdirSync(dir)
@@ -113,8 +117,8 @@ async function main() {
       to: [{ email_address: { address: row.email, name: row.name } }],
       ...(cfg.replyTo ? { reply_to: [{ address: cfg.replyTo }] } : {}),
       subject: candidateEmailSubject(row.positions),
-      htmlbody: candidateEmailHtml({ positionTitles: row.positions, selectionUrl: row.url }),
-      textbody: candidateEmailText({ positionTitles: row.positions, selectionUrl: row.url }),
+      htmlbody: candidateEmailHtml({ firstName: firstNameOf(row.name), positionTitles: row.positions, selectionUrl: row.url }),
+      textbody: candidateEmailText({ firstName: firstNameOf(row.name), positionTitles: row.positions, selectionUrl: row.url }),
     };
 
     if (dryRun) {

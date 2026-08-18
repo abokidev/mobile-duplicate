@@ -66,9 +66,44 @@ model Token {
   usedAt      DateTime?   @map("used_at")
   createdAt   DateTime    @default(now()) @map("created_at")
 
+  /// Encrypted (AES-256-GCM) copy of the RAW token, retained ONLY so the admin
+  /// can run the separated send and same-link reminders after import, and retry
+  /// failed sends. Purged (set null) the moment the candidate submits. The
+  /// authoritative lookup path is always the salted hash above; this is never
+  /// used for verification. See src/lib/crypto.ts and the Admin Upload addendum.
+  deliveryEnc        String?   @map("delivery_enc") @db.Text
+  /// Manual reminder bookkeeping (admin-initiated; no scheduler).
+  reminderCount      Int       @default(0) @map("reminder_count")
+  lastReminderSentAt DateTime? @map("last_reminder_sent_at")
+
   candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  events    Event[]
 
   @@map("tokens")
+}
+
+enum EventType {
+  sent
+  send_failed
+  opened
+  page_visited
+  submitted
+}
+
+/// Per-token delivery/engagement timeline (Admin Upload addendum §2).
+model Event {
+  id         Int       @id @default(autoincrement())
+  tokenId    Int       @map("token_id")
+  type       EventType
+  /// Free text: error message for send_failed, etc.
+  detail     String?   @db.Text
+  occurredAt DateTime  @default(now()) @map("occurred_at")
+
+  token Token @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([tokenId])
+  @@index([type])
+  @@map("events")
 }
 
 /// One selection per candidate, ever. Written inside the same locked

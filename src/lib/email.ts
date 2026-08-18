@@ -8,7 +8,7 @@ import { esc } from './html.js';
  * footer) is preserved and the approved copy is poured into it.
  *
  * The only per-candidate variables are:
- *   - the greeting: "Dear Applicant," (confirmed with Adekunle — no personalization),
+ *   - the greeting: "Dear {FirstName}," (personalised),
  *   - the shortlisted position titles inserted into paragraph 1 and the subject.
  *
  * Dates inside the copy ("Saturday, 29th August 2026", "4pm WAT on Thursday, 20th
@@ -17,9 +17,13 @@ import { esc } from './html.js';
  */
 
 export interface CandidateEmailInput {
+  /** Candidate first name for the personalised greeting ("Dear {FirstName},"). */
+  firstName: string;
   /** The candidate's own shortlisted position titles (NOT the full 7). */
   positionTitles: string[];
   selectionUrl: string;
+  /** Optional per-token open-tracking pixel URL (best-effort — see addendum §2). */
+  pixelUrl?: string;
 }
 
 /** Natural-language list join, e.g. ["A"]→"A", ["A","B"]→"A and B", ["A","B","C"]→"A, B and C". */
@@ -43,7 +47,11 @@ export function candidateEmailSubject(positionTitles: string[]): string {
  */
 export function candidateEmailHtml(input: CandidateEmailInput): string {
   const url = esc(input.selectionUrl);
+  const first = esc(input.firstName);
   const titles = esc(formatPositionList(input.positionTitles));
+  const pixel = input.pixelUrl
+    ? `<img src="${esc(input.pixelUrl)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
+    : '';
 
   return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -105,7 +113,7 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
                 Position Preference &nbsp;&middot;&nbsp; Action Required
               </div>
               <div style="font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:20px;color:#141414;margin:12px 0 2px 0;font-weight:bold;">
-                Dear Applicant,
+                Dear ${first},
               </div>
             </td>
           </tr>
@@ -114,8 +122,8 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
           <tr>
             <td class="px" style="padding:12px 40px 4px 40px;">
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
-                Further to your application to ExxonMobil Affiliates in Nigeria for the following
-                <strong style="color:#141414;">${titles}</strong> positions, you have been shortlisted to
+                Further to your application to ExxonMobil Affiliates in Nigeria for the following positions:
+                <strong style="color:#141414;">${titles}</strong>, you have been shortlisted to
                 complete an online computer-based aptitude and skills test on Saturday, 29th August 2026
                 as part of the selection process.
               </p>
@@ -124,8 +132,9 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
                 i.e. any candidate who takes the aptitude test more than once will be disqualified.
               </p>
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 20px 0;">
-                Please take a moment to indicate your preferred position using the button below. Do not
-                indicate a position that you have not been shortlisted for.
+                Please take a moment to indicate your preferred position using the button below. You will only
+                see the positions you were shortlisted for, and you can submit your choice once. Once you
+                confirm your choice, it cannot be changed.
               </p>
             </td>
           </tr>
@@ -208,6 +217,7 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
       </td>
     </tr>
   </table>
+  ${pixel}
 </body>
 </html>`;
 }
@@ -216,13 +226,13 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
 export function candidateEmailText(input: CandidateEmailInput): string {
   const titles = formatPositionList(input.positionTitles);
   return [
-    `Dear Applicant,`,
+    `Dear ${input.firstName},`,
     ``,
-    `Further to your application to ExxonMobil Affiliates in Nigeria for the following ${titles} positions, you have been shortlisted to complete an online computer-based aptitude and skills test on Saturday, 29th August 2026 as part of the selection process.`,
+    `Further to your application to ExxonMobil Affiliates in Nigeria for the following positions: ${titles}, you have been shortlisted to complete an online computer-based aptitude and skills test on Saturday, 29th August 2026 as part of the selection process.`,
     ``,
     `Candidates who applied for multiple positions are to take the test for only one position i.e. any candidate who takes the aptitude test more than once will be disqualified.`,
     ``,
-    `Please take a moment to indicate your preferred position using the button below. Do not indicate a position that you have not been shortlisted for.`,
+    `Please take a moment to indicate your preferred position using the button below. You will only see the positions you were shortlisted for, and you can submit your choice once. Once you confirm your choice, it cannot be changed.`,
     ``,
     `Indicate your preferred position: ${input.selectionUrl}`,
     ``,

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import formbody from '@fastify/formbody';
+import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import { env } from './lib/env.js';
@@ -47,7 +48,10 @@ export async function buildServer() {
   });
 
   await app.register(cookie, { secret: env.cookieSecret });
-  await app.register(formbody);
+  // Admin's hidden-CSV re-submit on commit can be sizeable for a large candidate list.
+  await app.register(formbody, { bodyLimit: 5 * 1024 * 1024 });
+  // CSV upload for the admin candidate list (addendum §1).
+  await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024, files: 1 } });
 
   await app.register(fastifyStatic, {
     root: join(__dirname, '..', 'public'),
