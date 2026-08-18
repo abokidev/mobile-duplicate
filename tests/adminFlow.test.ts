@@ -168,6 +168,16 @@ describe('admin upload → preview → commit → tracking (in-process)', () => 
     expect(res.body).toMatch(/email <strong>1<\/strong>/);
   });
 
+  it('shows a clear "seed positions first" message when the positions table is empty', async () => {
+    await prisma.shortlist.deleteMany();
+    await prisma.position.deleteMany();
+    const res = await app.inject({ method: 'POST', url: '/admin/upload/preview', ...multipart(CSV) });
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toContain('npm run seed:positions');
+    // does not fall through to the confusing per-row "unknown position title" preview
+    expect(res.body).not.toContain('Review before import');
+  });
+
   it('exports a CSV with the tracking columns', async () => {
     const res = await app.inject({ method: 'GET', url: '/admin/export.csv', headers: { cookie } });
     expect(res.statusCode).toBe(200);

@@ -15,19 +15,11 @@
  */
 import { prisma } from '../src/lib/db.js';
 import { hashPassword } from '../src/admin/auth.js';
+import { POSITION_TITLES } from '../src/lib/positions.js';
 
-// The 7 fixed positions, in the exact order from POSITIONS_SEED.md.
-// (Source list had "Process Technician" and "Electrical Specialist" listed twice;
-// treated as repeats, not distinct postings — confirm with Adekunle if wrong.)
-const POSITIONS = [
-  'Process Technician',
-  'Electrical Specialist',
-  'ICSR Specialist',
-  'Mechanical Specialist',
-  'Instrument Specialist',
-  'Maintenance Integrity Supervisor',
-  'Maintenance Co-ordinator',
-];
+// The 7 fixed positions, in the exact order from POSITIONS_SEED.md (single
+// source of truth in src/lib/positions.ts).
+const POSITIONS = POSITION_TITLES;
 
 // Demo candidates for local verification only. The real candidate → position
 // Shortlist mapping is outstanding and will be provided separately before send;

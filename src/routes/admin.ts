@@ -20,6 +20,7 @@ import {
   adminUploadPage,
 } from '../admin/pages.js';
 import { commitImport, errorReportCsv, validateCsv } from '../admin/import.js';
+import { POSITION_TITLES } from '../lib/positions.js';
 import {
   countInitialPending,
   countReminderPending,
@@ -99,28 +100,45 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 
   // ── Upload ────────────────────────────────────────────────────────────────
+  // Accepted titles from the DB; if none are configured, show the canonical set
+  // as a hint so the admin knows what to seed / match.
+  async function acceptedTitles(): Promise<{ titles: string[]; configured: boolean }> {
+    const rows = await prisma.position.findMany({ select: { title: true }, orderBy: { id: 'asc' } });
+    if (rows.length === 0) return { titles: [...POSITION_TITLES], configured: false };
+    return { titles: rows.map((r) => r.title), configured: true };
+  }
+  const NOT_CONFIGURED_MSG =
+    'No positions are configured in the database yet, so every title will be rejected as “unknown”. ' +
+    'Seed the 7 positions first (run: npm run seed:positions), then upload.';
+
   app.get('/admin/upload', async (req, reply) => {
     const admin = await requireAdmin(req, reply);
     if (!admin) return;
-    return sendHtml(reply, 200, adminUploadPage());
+    const { titles, configured } = await acceptedTitles();
+    return sendHtml(reply, 200, adminUploadPage({ validTitles: titles, error: configured ? undefined : NOT_CONFIGURED_MSG }));
   });
 
   app.post('/admin/upload/preview', async (req, reply) => {
     const admin = await requireAdmin(req, reply);
     if (!admin) return;
+    const { titles, configured } = await acceptedTitles();
+    // Guard the confusing all-unknown case before parsing.
+    if (!configured) {
+      return sendHtml(reply, 400, adminUploadPage({ validTitles: titles, error: NOT_CONFIGURED_MSG }));
+    }
     let text = '';
     try {
       const file = await (req as unknown as { file: () => Promise<{ toBuffer: () => Promise<Buffer> } | undefined> }).file();
-      if (!file) return sendHtml(reply, 400, adminUploadPage({ error: 'No file was uploaded.' }));
+      if (!file) return sendHtml(reply, 400, adminUploadPage({ validTitles: titles, error: 'No file was uploaded.' }));
       text = (await file.toBuffer()).toString('utf8');
     } catch {
-      return sendHtml(reply, 400, adminUploadPage({ error: 'Could not read the uploaded file.' }));
+      return sendHtml(reply, 400, adminUploadPage({ validTitles: titles, error: 'Could not read the uploaded file.' }));
     }
     try {
       const result = await validateCsv(text);
       return sendHtml(reply, 200, adminPreviewPage(result, text));
     } catch (err) {
-      return sendHtml(reply, 400, adminUploadPage({ error: (err as Error).message }));
+      return sendHtml(reply, 400, adminUploadPage({ validTitles: titles, error: (err as Error).message }));
     }
   });
 

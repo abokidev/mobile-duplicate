@@ -203,19 +203,30 @@ export function adminDashboardPage(
   return layout({ title: 'Admin Dashboard · Position Preference', bodyHtml: body });
 }
 
-export function adminUploadPage(opts: { error?: string } = {}): string {
+export function adminUploadPage(opts: { error?: string; validTitles?: string[] } = {}): string {
   const err = opts.error
-    ? html`<div class="callout" role="alert" style="border-left-color:var(--red)"><div><p class="value">${opts.error}</p></div></div>`
-    : '';
+    ? raw(html`<div class="callout" role="alert" style="border-left-color:var(--red)"><div><p class="value">${opts.error}</p></div></div>`)
+    : raw('');
+  const titlesList = (opts.validTitles ?? []).map((t) => html`<li>${t}</li>`).join('');
+  const titlesBlock = (opts.validTitles ?? []).length
+    ? raw(html`
+        <div class="callout" style="border-left-color:#2f6b46;background:#f2f8f3">
+          <div>
+            <p class="label" style="color:#2f6b46">Accepted position titles (must match exactly, case-sensitive)</p>
+            <ul style="margin:6px 0 0;padding-left:18px;font-size:14px;color:var(--charcoal);columns:2">${raw(titlesList)}</ul>
+          </div>
+        </div>`)
+    : raw('');
   const body = html`
     <div class="card" style="max-width:40rem;margin:0 auto">
       <p class="eyebrow">Admin · Upload</p>
       <h1>Upload candidate list</h1>
       <p class="lede muted">
         CSV with columns <code>name, email, positions</code>, where <code>positions</code> is a
-        semicolon-separated list of position titles matching the seeded titles exactly.
+        semicolon-separated list of position titles matching the accepted titles exactly.
       </p>
-      ${raw(err)}
+      ${err}
+      ${titlesBlock}
       <div class="callout" style="border-left-color:#3a557e;background:#f4f6fa">
         <div>
           <p class="label" style="color:#3a557e">Example row</p>

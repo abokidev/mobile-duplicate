@@ -16,6 +16,7 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:push": "prisma db push",
     "seed": "tsx scripts/seed.ts",
+    "seed:positions": "tsx scripts/seedPositions.ts",
     "tokens:issue": "tsx scripts/issueTokens.ts",
     "email:send": "tsx scripts/sendEmails.ts",
     "email:preview": "tsx scripts/previewEmail.ts",
