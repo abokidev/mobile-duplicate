@@ -114,8 +114,8 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
           <tr>
             <td class="px" style="padding:12px 40px 4px 40px;">
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
-                Further to your application to ExxonMobil Affiliates in Nigeria for the following
-                <strong style="color:#141414;">${titles}</strong> positions, you have been shortlisted to
+                Further to your application to ExxonMobil Affiliates in Nigeria for the following positions:
+                <strong style="color:#141414;">${titles}</strong>, you have been shortlisted to
                 complete an online computer-based aptitude and skills test on Saturday, 29th August 2026
                 as part of the selection process.
               </p>
@@ -218,7 +218,7 @@ export function candidateEmailText(input: CandidateEmailInput): string {
   return [
     `Dear Applicant,`,
     ``,
-    `Further to your application to ExxonMobil Affiliates in Nigeria for the following ${titles} positions, you have been shortlisted to complete an online computer-based aptitude and skills test on Saturday, 29th August 2026 as part of the selection process.`,
+    `Further to your application to ExxonMobil Affiliates in Nigeria for the following positions: ${titles}, you have been shortlisted to complete an online computer-based aptitude and skills test on Saturday, 29th August 2026 as part of the selection process.`,
     ``,
     `Candidates who applied for multiple positions are to take the test for only one position i.e. any candidate who takes the aptitude test more than once will be disqualified.`,
     ``,
