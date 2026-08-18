@@ -1,0 +1,194 @@
+import { esc } from './html.js';
+import { env } from './env.js';
+
+export interface CandidateEmailInput {
+  firstName: string;
+  selectionUrl: string;
+  deadlineDisplay?: string;
+  testDateDisplay?: string;
+}
+
+/**
+ * Fully designed, table-based, mobile-responsive HTML candidate email (Section 8).
+ * Letterhead-style header, one red call-to-action, restrained palette.
+ * A matching plaintext part is produced by `candidateEmailText`.
+ *
+ * Colours are inlined (email clients strip <style>/classes unreliably); the
+ * <style> block only carries the responsive @media rules and web-font hint.
+ */
+export function candidateEmailHtml(input: CandidateEmailInput): string {
+  const deadline = input.deadlineDisplay ?? env.deadlineDisplay;
+  const testDate = input.testDateDisplay ?? env.testDateDisplay;
+  const url = esc(input.selectionUrl);
+  const first = esc(input.firstName);
+
+  return `<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="x-apple-disable-message-reformatting" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<title>Your Position Preference</title>
+<style>
+  /* Client-safe progressive styling; core layout is inline + table-based. */
+  body { margin:0; padding:0; background:#f7f5f2; }
+  table { border-collapse:collapse; }
+  img { border:0; line-height:100%; outline:none; text-decoration:none; }
+  a { text-decoration:none; }
+  .btn:hover { background:#c11110 !important; }
+  @media only screen and (max-width:620px) {
+    .container { width:100% !important; }
+    .px { padding-left:24px !important; padding-right:24px !important; }
+    .h1 { font-size:24px !important; }
+    .btn-td { display:block !important; }
+    .cta { width:100% !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#f7f5f2;">
+  <!-- Preheader (hidden) -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f7f5f2;font-size:1px;line-height:1px;">
+    You were shortlisted for more than one position. Please select the one position you want to be assessed for.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5f2;">
+    <tr>
+      <td align="center" style="padding:28px 12px;">
+        <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;border:1px solid #e7e3dd;border-radius:16px;overflow:hidden;">
+
+          <!-- Red accent bar -->
+          <tr><td style="height:4px;background:#e71615;line-height:4px;font-size:4px;">&nbsp;</td></tr>
+
+          <!-- Letterhead -->
+          <tr>
+            <td class="px" style="padding:26px 40px 6px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#141414;font-weight:bold;">
+                    DRAGNET
+                  </td>
+                  <td align="right" style="font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#6f6a63;">
+                    ExxonMobil Affiliates in Nigeria
+                  </td>
+                </tr>
+              </table>
+              <div style="height:1px;background:#e7e3dd;margin-top:18px;line-height:1px;font-size:1px;">&nbsp;</div>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td class="px" style="padding:30px 40px 8px 40px;">
+              <div style="font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e71615;font-weight:bold;">
+                Position Preference &nbsp;&middot;&nbsp; Action Required
+              </div>
+              <h1 class="h1" style="font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:28px;line-height:1.25;color:#141414;margin:14px 0 16px 0;font-weight:bold;">
+                Hey ${first},
+              </h1>
+              <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.6;color:#242424;margin:0 0 16px 0;">
+                You were shortlisted for <strong>more than one position</strong> with ExxonMobil Affiliates
+                in Nigeria. Before the aptitude and skills test, we need you to declare the
+                <strong>one position</strong> you would like to be assessed for.
+              </p>
+              <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.6;color:#242424;margin:0 0 24px 0;">
+                Please use your personal link below. You will see only the positions you were shortlisted
+                for, and you can submit your choice <strong>once</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td class="px" align="center" style="padding:4px 40px 8px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" class="cta">
+                <tr>
+                  <td class="btn" bgcolor="#e71615" style="border-radius:10px;background:#e71615;">
+                    <a class="btn" href="${url}" target="_blank"
+                       style="display:inline-block;padding:16px 40px;font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:16px;font-weight:bold;color:#ffffff;background:#e71615;border-radius:10px;letter-spacing:0.3px;">
+                      Select my position &nbsp;&rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Deadline note -->
+          <tr>
+            <td class="px" style="padding:22px 40px 4px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fbfaf8;border:1px solid #e7e3dd;border-left:3px solid #e71615;border-radius:10px;">
+                <tr>
+                  <td style="padding:14px 18px;font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:1.5;color:#242424;">
+                    <span style="font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6f6a63;">Selection deadline</span><br/>
+                    <strong style="color:#141414;">${esc(deadline)}</strong>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Fine print + fallback link -->
+          <tr>
+            <td class="px" style="padding:20px 40px 8px 40px;">
+              <p style="font-family:Calibri,Arial,sans-serif;font-size:14px;line-height:1.6;color:#6f6a63;margin:0 0 14px 0;">
+                The test is for <strong>one position only</strong>. Anyone found taking the test more than once
+                is disqualified. Your test holds on <strong>${esc(testDate)}</strong>. Once you confirm your
+                choice, it cannot be changed.
+              </p>
+              <p style="font-family:Calibri,Arial,sans-serif;font-size:13px;line-height:1.6;color:#928d85;margin:0;">
+                If the button does not work, copy and paste this link into your browser:<br/>
+                <a href="${url}" style="color:#c11110;word-break:break-all;">${url}</a>
+              </p>
+            </td>
+          </tr>
+
+          <tr><td style="padding:6px 40px 0 40px;"><div style="height:1px;background:#e7e3dd;line-height:1px;font-size:1px;">&nbsp;</div></td></tr>
+
+          <!-- Footer -->
+          <tr>
+            <td class="px" style="padding:18px 40px 30px 40px;">
+              <p style="font-family:Calibri,Arial,sans-serif;font-size:12px;line-height:1.6;color:#928d85;margin:0;">
+                This link is personal to you — please do not forward it. Sent by Dragnet Solutions Limited on
+                behalf of ExxonMobil Affiliates in Nigeria.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/** Plaintext fallback part (required by Section 8). */
+export function candidateEmailText(input: CandidateEmailInput): string {
+  const deadline = input.deadlineDisplay ?? env.deadlineDisplay;
+  const testDate = input.testDateDisplay ?? env.testDateDisplay;
+  return [
+    `Hey ${input.firstName},`,
+    ``,
+    `You were shortlisted for MORE THAN ONE position with ExxonMobil Affiliates in Nigeria.`,
+    `Before the aptitude and skills test, please declare the ONE position you want to be assessed for.`,
+    ``,
+    `Select your position using your personal link:`,
+    input.selectionUrl,
+    ``,
+    `You will see only the positions you were shortlisted for, and you can submit your choice once.`,
+    ``,
+    `Selection deadline: ${deadline}`,
+    ``,
+    `Please note:`,
+    `- The test is for one position only. Anyone found taking the test more than once is disqualified.`,
+    `- Your test holds on ${testDate}.`,
+    `- Once you confirm your choice, it cannot be changed.`,
+    ``,
+    `This link is personal to you — please do not forward it.`,
+    `Sent by Dragnet Solutions Limited on behalf of ExxonMobil Affiliates in Nigeria.`,
+  ].join('\n');
+}
+
+export function candidateEmailSubject(): string {
+  return 'Action required: select your position — ExxonMobil Affiliates in Nigeria';
+}

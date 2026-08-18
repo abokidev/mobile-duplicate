@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+npm-debug.log*
+.DS_Store
+# Generated token exports contain RAW tokens — never commit.
+out/
+tokens-*.csv
+coverage/
