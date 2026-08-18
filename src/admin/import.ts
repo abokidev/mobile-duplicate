@@ -167,12 +167,22 @@ export interface CommitResult {
   skippedBad: number;
 }
 
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
 /**
  * Commit the good rows (Admin Upload addendum §1 "On confirm"):
  *   - multi-shortlisted → Candidate + Shortlist + Token (hash stored; raw kept
  *     encrypted for the separated send/reminders, purged on submission).
  *   - single-shortlisted → Candidate + Shortlist + auto Selection (FR6), no token.
  * No emails are sent here — send is a separate, explicit action.
+ *
+ * Bulk-inserts in chunks so large lists (1000s of candidates) commit in a couple
+ * of round-trips per chunk instead of one transaction per row — otherwise the
+ * request would exceed the reverse-proxy timeout (observed as an nginx 504).
  */
 export async function commitImport(text: string): Promise<CommitResult> {
   const result = await validateCsv(text);
@@ -183,38 +193,59 @@ export async function commitImport(text: string): Promise<CommitResult> {
   let tokensCreated = 0;
   let autoRecorded = 0;
 
-  for (const row of result.good) {
-    const positionIds = row.positions.map((t) => idByTitle.get(t)!).filter((v) => v != null);
-    if (positionIds.length === 0) continue; // defensive; validation already guards
+  // Chunk to keep each transaction short and each bulk query within DB limits.
+  const CHUNK = 250;
+  for (const rows of chunk(result.good, CHUNK)) {
+    await prisma.$transaction(
+      async (tx) => {
+        // Skip any email that already exists (validation flags these, but re-check
+        // guards a race between validate and commit).
+        const emails = rows.map((r) => r.email);
+        const existing = new Set(
+          (await tx.candidate.findMany({ where: { email: { in: emails } }, select: { email: true } })).map(
+            (c) => c.email
+          )
+        );
+        const fresh = rows.filter((r) => !existing.has(r.email));
+        if (fresh.length === 0) return;
 
-    await prisma.$transaction(async (tx) => {
-      // Re-check for a race where the email was imported between validate and commit.
-      const exists = await tx.candidate.findUnique({ where: { email: row.email }, select: { id: true } });
-      if (exists) return;
-
-      const candidate = await tx.candidate.create({ data: { name: row.name, email: row.email } });
-      candidatesCreated++;
-      await tx.shortlist.createMany({
-        data: positionIds.map((pid) => ({ candidateId: candidate.id, positionId: pid })),
-      });
-
-      if (row.multi) {
-        const raw = generateRawToken();
-        await tx.token.create({
-          data: {
-            candidateId: candidate.id,
-            tokenHash: hashToken(raw),
-            deliveryEnc: encryptDeliveryToken(raw),
-          },
+        await tx.candidate.createMany({
+          data: fresh.map((r) => ({ name: r.name, email: r.email })),
+          skipDuplicates: true,
         });
-        tokensCreated++;
-      } else {
-        await tx.selection.create({
-          data: { candidateId: candidate.id, positionId: positionIds[0], source: 'auto_single_shortlist' },
+        const created = await tx.candidate.findMany({
+          where: { email: { in: fresh.map((r) => r.email) } },
+          select: { id: true, email: true },
         });
-        autoRecorded++;
-      }
-    });
+        const idByEmail = new Map(created.map((c) => [c.email, c.id]));
+        candidatesCreated += created.length;
+
+        const shortlistData: { candidateId: number; positionId: number }[] = [];
+        const tokenData: { candidateId: number; tokenHash: string; deliveryEnc: string }[] = [];
+        const selectionData: { candidateId: number; positionId: number; source: string }[] = [];
+
+        for (const r of fresh) {
+          const candidateId = idByEmail.get(r.email);
+          if (candidateId == null) continue;
+          const positionIds = r.positions.map((t) => idByTitle.get(t)!).filter((v) => v != null);
+          if (positionIds.length === 0) continue;
+          for (const positionId of positionIds) shortlistData.push({ candidateId, positionId });
+          if (r.multi) {
+            const raw = generateRawToken();
+            tokenData.push({ candidateId, tokenHash: hashToken(raw), deliveryEnc: encryptDeliveryToken(raw) });
+            tokensCreated++;
+          } else {
+            selectionData.push({ candidateId, positionId: positionIds[0], source: 'auto_single_shortlist' });
+            autoRecorded++;
+          }
+        }
+
+        if (shortlistData.length) await tx.shortlist.createMany({ data: shortlistData });
+        if (tokenData.length) await tx.token.createMany({ data: tokenData });
+        if (selectionData.length) await tx.selection.createMany({ data: selectionData });
+      },
+      { timeout: 120_000, maxWait: 20_000 }
+    );
   }
 
   return { candidatesCreated, tokensCreated, autoRecorded, skippedBad: result.bad.length };

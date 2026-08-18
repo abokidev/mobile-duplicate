@@ -354,6 +354,29 @@ export function adminConfirmSendPage(opts: {
   return layout({ title: isRemind ? 'Confirm reminders · Admin' : 'Confirm send · Admin', bodyHtml: body, withScript: true });
 }
 
+export function adminBatchStartedPage(kind: 'send' | 'remind', count: number, alreadyRunning: boolean): string {
+  const noun = kind === 'remind' ? 'reminder' : 'invitation';
+  const body = html`
+    <div class="card" style="max-width:38rem;margin:0 auto">
+      <div class="success-mark">${raw('<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 12h16M14 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>')}</div>
+      <p class="eyebrow">${kind === 'remind' ? 'Reminders' : 'Invitations'} sending</p>
+      <h1>${alreadyRunning ? 'A batch is already sending' : `Sending ${count} ${noun}(s)…`}</h1>
+      <p class="lede">
+        ${alreadyRunning
+          ? raw('A send is already in progress. Emails are going out in the background — no need to start another.')
+          : raw('Emails are being sent in the background so this page never times out on large lists.')}
+        Refresh the dashboard to watch progress as each candidate moves to <strong>Sent</strong>.
+      </p>
+      <p class="muted" style="font-size:14px">
+        If any sends fail, they are marked on the dashboard and you can safely run
+        ${kind === 'remind' ? 'reminders' : 'send'} again — only candidates not yet emailed are retried.
+      </p>
+      <div class="actions"><a class="btn btn-primary" href="/admin">Back to dashboard</a></div>
+    </div>
+  `;
+  return layout({ title: 'Sending… · Admin', bodyHtml: body });
+}
+
 export function adminBatchResultPage(kind: 'send' | 'remind', res: BatchResult): string {
   const errors = res.errors
     .map((e) => html`<div class="row"><div class="k">${e.email}</div><div class="v" style="color:var(--red-deep);font-weight:400">${e.error}</div></div>`)

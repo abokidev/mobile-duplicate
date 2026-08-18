@@ -178,6 +178,17 @@ describe('admin upload → preview → commit → tracking (in-process)', () => 
     expect(res.body).not.toContain('Review before import');
   });
 
+  it('send route validates email config up front and returns immediately (no hang)', async () => {
+    // In the test env ZEPTOMAIL_SEND_TOKEN is unset, so the route must surface a
+    // config error synchronously rather than kicking off a background send.
+    const started = Date.now();
+    const res = await app.inject({ method: 'POST', url: '/admin/send', headers: { cookie } });
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('Send failed');
+    expect(res.body).toContain('ZEPTOMAIL_SEND_TOKEN');
+  });
+
   it('exports a CSV with the tracking columns', async () => {
     const res = await app.inject({ method: 'GET', url: '/admin/export.csv', headers: { cookie } });
     expect(res.statusCode).toBe(200);
