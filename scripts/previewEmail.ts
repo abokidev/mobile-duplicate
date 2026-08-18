@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { candidateEmailHtml, candidateEmailText } from '../src/lib/email.js';
 
 const sample = {
+  firstName: 'Adaeze',
   positionTitles: ['Process Technician', 'Electrical Specialist'],
   selectionUrl: 'https://select.dragnet-solutions.com/s/EXAMPLE-RAW-TOKEN-DO-NOT-USE',
 };

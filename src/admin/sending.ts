@@ -29,6 +29,10 @@ function urlsFor(raw: string) {
   };
 }
 
+function firstNameOf(name: string): string {
+  return name.trim().split(/\s+/)[0] || name || 'there';
+}
+
 /** Tokens awaiting their INITIAL send: raw still retained and no successful `sent` yet. */
 async function loadInitialPending(): Promise<SendContext[]> {
   const tokens = await prisma.token.findMany({
@@ -108,8 +112,8 @@ export async function sendInitialBatch(): Promise<BatchResult> {
       toAddress: ctx.email,
       toName: ctx.name,
       subject: candidateEmailSubject(ctx.titles),
-      htmlBody: candidateEmailHtml({ positionTitles: ctx.titles, selectionUrl, pixelUrl }),
-      textBody: candidateEmailText({ positionTitles: ctx.titles, selectionUrl }),
+      htmlBody: candidateEmailHtml({ firstName: firstNameOf(ctx.name), positionTitles: ctx.titles, selectionUrl, pixelUrl }),
+      textBody: candidateEmailText({ firstName: firstNameOf(ctx.name), positionTitles: ctx.titles, selectionUrl }),
     });
     if (res.ok) {
       await logEvent(ctx.tokenId, 'sent');
@@ -137,8 +141,8 @@ export async function sendReminderBatch(): Promise<BatchResult> {
       toAddress: ctx.email,
       toName: ctx.name,
       subject: reminderEmailSubject(),
-      htmlBody: reminderEmailHtml({ positionTitles: ctx.titles, selectionUrl, pixelUrl }),
-      textBody: reminderEmailText({ positionTitles: ctx.titles, selectionUrl }),
+      htmlBody: reminderEmailHtml({ firstName: firstNameOf(ctx.name), positionTitles: ctx.titles, selectionUrl, pixelUrl }),
+      textBody: reminderEmailText({ firstName: firstNameOf(ctx.name), positionTitles: ctx.titles, selectionUrl }),
     });
     if (res.ok) {
       await prisma.token.update({

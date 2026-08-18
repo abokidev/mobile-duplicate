@@ -3,17 +3,14 @@ import { esc } from './html.js';
 /**
  * REMINDER email (Admin Upload addendum §3).
  *
- * ⚠️ DRAFT COPY — PENDING ADEKUNLE'S APPROVAL. Unlike the initial email (whose
- * wording is fixed/approved), this reminder copy is newly written and must be
- * signed off before it is used, exactly as the original required approved wording.
- * The dashboard surfaces this "draft — not yet approved" status next to the button.
- *
- * It is deliberately shorter than the initial email, framed around urgency ahead
- * of the deadline, uses the SAME personal link, and keeps the same premium design
- * and tone. The only per-candidate variable is the shortlisted position list.
+ * Copy APPROVED by the client. It is deliberately shorter than the initial email,
+ * framed around urgency ahead of the deadline, uses the SAME personal link, and
+ * keeps the same premium design and tone. Per-candidate variables are the first
+ * name (personalised greeting) and the shortlisted position list.
  */
 
 export interface ReminderEmailInput {
+  firstName: string;
   positionTitles: string[];
   selectionUrl: string;
   pixelUrl?: string;
@@ -32,6 +29,7 @@ export function reminderEmailSubject(): string {
 
 export function reminderEmailHtml(input: ReminderEmailInput): string {
   const url = esc(input.selectionUrl);
+  const first = esc(input.firstName);
   const titles = esc(formatList(input.positionTitles));
   const pixel = input.pixelUrl
     ? `<img src="${esc(input.pixelUrl)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
@@ -79,7 +77,7 @@ export function reminderEmailHtml(input: ReminderEmailInput): string {
           <tr>
             <td class="px" style="padding:26px 40px 4px 40px;">
               <div style="font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e71615;font-weight:bold;">Reminder &nbsp;&middot;&nbsp; Action Still Required</div>
-              <div style="font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:20px;color:#141414;margin:12px 0 2px 0;font-weight:bold;">Dear Applicant,</div>
+              <div style="font-family:'Century Gothic','Futura','Trebuchet MS',sans-serif;font-size:20px;color:#141414;margin:12px 0 2px 0;font-weight:bold;">Dear ${first},</div>
             </td>
           </tr>
           <tr>
@@ -90,7 +88,7 @@ export function reminderEmailHtml(input: ReminderEmailInput): string {
               </p>
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 20px 0;">
                 Please use your personal link below to make your selection. It only takes a moment, and your
-                choice can be submitted once.
+                choice can be submitted once. Once you confirm your choice, it cannot be changed.
               </p>
             </td>
           </tr>
@@ -148,11 +146,11 @@ export function reminderEmailHtml(input: ReminderEmailInput): string {
 export function reminderEmailText(input: ReminderEmailInput): string {
   const titles = formatList(input.positionTitles);
   return [
-    `Dear Applicant,`,
+    `Dear ${input.firstName},`,
     ``,
     `Our records show you have not yet indicated your preferred position for the following: ${titles}. This is a reminder to do so before the deadline.`,
     ``,
-    `Please use your personal link below to make your selection. It only takes a moment, and your choice can be submitted once.`,
+    `Please use your personal link below to make your selection. It only takes a moment, and your choice can be submitted once. Once you confirm your choice, it cannot be changed.`,
     ``,
     `Indicate your preferred position: ${input.selectionUrl}`,
     ``,

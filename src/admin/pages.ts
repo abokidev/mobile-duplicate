@@ -152,7 +152,7 @@ export function adminDashboardPage(
         </div>
         <div class="actioncard">
           <h3>Send reminders</h3>
-          <p>${c.pending - c.notSent - c.sendFailed} emailed candidate(s) still pending. <em>Reminder copy is a draft pending approval.</em></p>
+          <p>${c.pending - c.notSent - c.sendFailed} emailed candidate(s) still pending.</p>
           <form method="POST" action="/admin/remind/preview" style="margin:0"><button class="btn btn-ghost small">Send reminders…</button></form>
         </div>
       </div>
@@ -331,9 +331,6 @@ export function adminConfirmSendPage(opts: {
       <p class="lede">
         This will email <strong>${opts.count}</strong> candidate(s)${isRemind ? ' who have not yet responded' : ' awaiting their first invitation'}.
       </p>
-      ${isRemind
-        ? raw(html`<div class="callout" style="border-left-color:#c8a13a;background:#fdf7ea"><div><p class="value" style="font-weight:600">The reminder email copy is a draft and should be approved by Adekunle before use.</p></div></div>`)
-        : raw('')}
       ${opts.count === 0
         ? raw(html`<p class="muted">There is no one to email right now.</p><div class="actions"><a class="btn btn-ghost" href="/admin">Back to dashboard</a></div>`)
         : raw(html`
