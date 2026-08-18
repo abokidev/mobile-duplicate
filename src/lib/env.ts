@@ -29,18 +29,55 @@ export const env = {
   cookieSecure: bool('COOKIE_SECURE', false),
   trustProxy: bool('TRUST_PROXY', false),
 
-  email: {
-    host: optional('ZEPTOMAIL_HOST', 'smtp.zeptomail.com'),
-    port: parseInt(optional('ZEPTOMAIL_PORT', '587'), 10),
-    user: optional('ZEPTOMAIL_USER', 'emailapikey'),
-    pass: optional('ZEPTOMAIL_PASS', ''),
-    fromAddress: optional('EMAIL_FROM_ADDRESS', 'invitation@dragnet-solutions.com'),
-    fromName: optional('EMAIL_FROM_NAME', 'Dragnet Solutions'),
-    replyTo: process.env.EMAIL_REPLY_TO || undefined,
-  },
-
   // Deadline Addendum: these two are COPY ONLY. They are shown to candidates
   // to create urgency but are never checked or enforced anywhere in code.
   deadlineDisplay: optional('DEADLINE_DISPLAY', '4:00 PM WAT, Thursday 20 August 2026'),
   testDateDisplay: optional('TEST_DATE_DISPLAY', 'Saturday, 29 August 2026'),
 };
+
+export interface EmailConfig {
+  apiHost: string;
+  agentAlias: string;
+  sendToken: string;
+  senderEmail: string;
+  senderName: string;
+  replyTo?: string;
+}
+
+/**
+ * Load the ZeptoMail HTTP API configuration (Email Integration Addendum).
+ *
+ * These are required environment variables with NO hardcoded fallback — the send
+ * script must fail loudly if any are missing rather than silently using a default.
+ * The secret values live only in the local, git-ignored `.env`.
+ *
+ * `requireToken` is relaxed for `--dry-run`, which renders and validates the sender
+ * identity but never contacts the API, so it does not need the secret send token.
+ */
+export function loadEmailConfig(opts: { requireToken?: boolean } = {}): EmailConfig {
+  const requireToken = opts.requireToken ?? true;
+  const missing: string[] = [];
+  const read = (name: string, needed = true): string => {
+    const v = process.env[name];
+    if ((!v || v.trim() === '') && needed) missing.push(name);
+    return v ?? '';
+  };
+
+  const cfg: EmailConfig = {
+    apiHost: read('ZEPTOMAIL_API_HOST'),
+    agentAlias: read('ZEPTOMAIL_AGENT_ALIAS'),
+    sendToken: read('ZEPTOMAIL_SEND_TOKEN', requireToken),
+    senderEmail: read('SENDER_EMAIL'),
+    senderName: read('SENDER_NAME'),
+    replyTo: process.env.EMAIL_REPLY_TO || undefined,
+  };
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required email environment variable(s): ${missing.join(', ')}.\n` +
+        `Set them in your local .env (see .env.example). The send token is provided ` +
+        `separately and must not be committed.`
+    );
+  }
+  return cfg;
+}

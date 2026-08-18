@@ -1,17 +1,22 @@
 /**
- * Send the designed candidate email via ZeptoMail (SMTP).
+ * Send the designed candidate email via the ZeptoMail HTTP API.
+ * (Email Integration Addendum — HTTP API at api.zeptomail.com, NOT SMTP.)
  *
  *   npm run email:send -- out/tokens-<stamp>.csv            # send for real
- *   npm run email:send -- out/tokens-<stamp>.csv --dry-run  # render only, no send
+ *   npm run email:send -- out/tokens-<stamp>.csv --dry-run  # render + validate, no send
  *
  * Input CSV columns: name,email,selection_url  (produced by tokens:issue).
  * The raw tokenised URL comes only from this file — this script never touches the
  * token hash in the DB.
+ *
+ * Config comes from required env vars (no hardcoded fallback): ZEPTOMAIL_API_HOST,
+ * ZEPTOMAIL_AGENT_ALIAS, ZEPTOMAIL_SEND_TOKEN, SENDER_EMAIL, SENDER_NAME. The send
+ * token is the full Authorization header value (already includes the
+ * `Zoho-enczapikey` prefix) and must never be logged or committed.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import nodemailer from 'nodemailer';
-import { env } from '../src/lib/env.js';
+import { loadEmailConfig } from '../src/lib/env.js';
 import {
   candidateEmailHtml,
   candidateEmailSubject,
@@ -79,44 +84,61 @@ async function main() {
   const fileArg = args.find((a) => !a.startsWith('--'));
   const file = fileArg ?? latestTokensFile();
 
+  // Fail loudly if config is missing. Dry-run does not need the secret send token.
+  const cfg = loadEmailConfig({ requireToken: !dryRun });
+  const endpoint = `https://${cfg.apiHost}/v1.1/email`;
+
   const rows = parseCsv(readFileSync(file, 'utf8'));
   console.log(`Loaded ${rows.length} recipient(s) from ${file}${dryRun ? '  (DRY RUN)' : ''}`);
-
-  const transport = dryRun
-    ? null
-    : nodemailer.createTransport({
-        host: env.email.host,
-        port: env.email.port,
-        secure: env.email.port === 465,
-        auth: { user: env.email.user, pass: env.email.pass },
-      });
-
-  if (transport) {
-    await transport.verify();
-    console.log('ZeptoMail SMTP connection verified.');
-  }
+  console.log(`ZeptoMail HTTP API: ${endpoint}`);
+  console.log(`Mail agent alias:   ${cfg.agentAlias}`);
+  console.log(`From:               ${cfg.senderName} <${cfg.senderEmail}>`);
 
   let sent = 0;
   let failed = 0;
   for (const row of rows) {
     const firstName = firstNameOf(row.name);
-    const message = {
-      from: { name: env.email.fromName, address: env.email.fromAddress },
-      to: { name: row.name, address: row.email },
-      replyTo: env.email.replyTo,
+    const payload = {
+      from: { address: cfg.senderEmail, name: cfg.senderName },
+      to: [{ email_address: { address: row.email, name: row.name } }],
+      ...(cfg.replyTo ? { reply_to: [{ address: cfg.replyTo }] } : {}),
       subject: candidateEmailSubject(),
-      text: candidateEmailText({ firstName, selectionUrl: row.url }),
-      html: candidateEmailHtml({ firstName, selectionUrl: row.url }),
+      htmlbody: candidateEmailHtml({ firstName, selectionUrl: row.url }),
+      textbody: candidateEmailText({ firstName, selectionUrl: row.url }),
     };
-    if (dryRun || !transport) {
-      console.log(`  [dry-run] would send to ${row.email}`);
+
+    if (dryRun) {
+      // Show the well-formed request without the secret or the (large) bodies.
+      const preview = {
+        method: 'POST',
+        endpoint,
+        headers: { Authorization: '«Zoho-enczapikey …redacted…»', 'Content-Type': 'application/json' },
+        body: { ...payload, htmlbody: `«html ${payload.htmlbody.length} chars»`, textbody: `«text ${payload.textbody.length} chars»` },
+      };
+      console.log(`  [dry-run] ${row.email}:`, JSON.stringify(preview.body));
       sent++;
       continue;
     }
+
     try {
-      const info = await transport.sendMail(message);
-      console.log(`  ✓ ${row.email}  (${info.messageId})`);
-      sent++;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          // The send token is already the full header value incl. the scheme prefix.
+          Authorization: cfg.sendToken,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        console.log(`  ✓ ${row.email}  (${res.status})`);
+        sent++;
+      } else {
+        const text = await res.text().catch(() => '');
+        console.error(`  ✗ ${row.email}: HTTP ${res.status} ${text.slice(0, 300)}`);
+        failed++;
+      }
     } catch (err) {
       console.error(`  ✗ ${row.email}:`, (err as Error).message);
       failed++;
@@ -128,6 +150,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(err instanceof Error ? err.message : err);
   process.exitCode = 1;
 });

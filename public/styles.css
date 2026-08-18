@@ -1,13 +1,13 @@
 /* ─────────────────────────────────────────────────────────────────────────
    Candidate Position Preference Selection Platform
-   Visual standard — Section 8 of the PSA.
+   Visual standard — Section 8 of the PSA. Built MOBILE-FIRST per the
+   Mobile-First Addendum: base rules target a phone; `min-width` queries scale
+   up for larger screens. Almost every candidate opens this on a phone.
 
    Palette:  Red #E71615 (primary accent)  ·  Black #141414 (headings)
              Charcoal #242424 (body)       ·  cream/off-white ground
-             muted grey for secondary text
    Type:     Century Gothic headings (Futura / Trebuchet MS fallback)
              Calibri body (Arial fallback)
-   Feel:     restrained, generous whitespace, one primary action per screen.
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
@@ -21,12 +21,12 @@
   --muted: #6f6a63;       /* secondary text / captions */
   --muted-soft: #928d85;
   --selected-tint: #fdecec;
-  --focus: #E71615;
 
   --maxw: 40rem;
-  --radius: 14px;
+  --radius: 16px;
   --shadow-sm: 0 1px 2px rgba(20, 20, 20, 0.05);
   --shadow-md: 0 12px 34px rgba(20, 20, 20, 0.09);
+  --tap: 52px;            /* minimum comfortable tap target */
 
   --font-head: "Century Gothic", "Futura", "Trebuchet MS", sans-serif;
   --font-body: "Calibri", "Segoe UI", Arial, sans-serif;
@@ -34,7 +34,10 @@
 
 * { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 body {
   margin: 0;
@@ -42,91 +45,81 @@ body {
   color: var(--charcoal);
   background: var(--ground);
   line-height: 1.6;
-  font-size: 17px;
+  font-size: 16px;
+  /* Belt-and-braces: never allow the candidate page to scroll sideways. */
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Subtle top accent bar (Section 8: web pages). */
-.accent-bar {
-  height: 4px;
-  background: var(--red);
-  width: 100%;
-}
+img, svg { max-width: 100%; }
 
-.page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+/* Subtle top accent bar (Section 8). */
+.accent-bar { height: 4px; background: var(--red); width: 100%; }
 
+.page { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+
+/* ── Masthead ─ compact on phones ─────────────────────────────────────────── */
 .masthead {
-  padding: 28px 22px 6px;
+  padding: 20px 18px 4px;
   max-width: var(--maxw);
   margin: 0 auto;
   width: 100%;
 }
-
 .brand {
   font-family: var(--font-head);
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
   margin: 0;
+  line-height: 1.5;
 }
-
 .brand strong { color: var(--black); font-weight: 700; }
 
+/* ── Content wrap ─ phone: light padding, full width ──────────────────────── */
 .wrap {
   flex: 1 0 auto;
   width: 100%;
   max-width: var(--maxw);
   margin: 0 auto;
-  padding: 14px 22px 56px;
+  padding: 10px 16px 40px;
 }
 
+/* ── Card ─ phone: comfortable padding, gentle shadow ─────────────────────── */
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  padding: 40px 38px;
+  box-shadow: var(--shadow-sm);
+  padding: 26px 20px;
 }
 
-@media (max-width: 30rem) {
-  .card { padding: 28px 22px; }
-  body { font-size: 16px; }
+/* Type — phone sizes first. */
+h1, h2, h3 {
+  font-family: var(--font-head);
+  color: var(--black);
+  line-height: 1.24;
+  overflow-wrap: break-word;
 }
-
-h1, h2, h3 { font-family: var(--font-head); color: var(--black); line-height: 1.22; }
-
-h1 {
-  font-size: 27px;
-  margin: 0 0 6px;
-  letter-spacing: 0.01em;
-}
+h1 { font-size: 24px; margin: 0 0 8px; letter-spacing: 0.01em; }
 
 .eyebrow {
   font-family: var(--font-head);
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   font-size: 11px;
   font-weight: 700;
   color: var(--red);
-  margin: 0 0 18px;
+  margin: 0 0 14px;
 }
-
-.lede { color: var(--charcoal); margin: 0 0 22px; }
-
-p { margin: 0 0 16px; }
-
+.lede { color: var(--charcoal); margin: 0 0 20px; }
+p { margin: 0 0 16px; overflow-wrap: break-word; }
 .muted { color: var(--muted); }
+.rule { height: 1px; background: var(--line); border: 0; margin: 24px 0; }
 
-.rule { height: 1px; background: var(--line); border: 0; margin: 28px 0; }
-
-/* Informational rule list on the instructions page. */
-.rules { list-style: none; margin: 6px 0 8px; padding: 0; }
+/* Informational rule list (instructions page). */
+.rules { list-style: none; margin: 4px 0 6px; padding: 0; }
 .rules li {
   position: relative;
   padding: 14px 0 14px 40px;
@@ -147,7 +140,7 @@ p { margin: 0 0 16px; }
 }
 .rules li strong { color: var(--black); }
 
-/* Callout for the deadline (copy only — never enforced). */
+/* Deadline callout (copy only — never enforced). */
 .callout {
   display: flex;
   gap: 14px;
@@ -156,13 +149,13 @@ p { margin: 0 0 16px; }
   border: 1px solid var(--line);
   border-left: 3px solid var(--red);
   border-radius: 10px;
-  padding: 16px 18px;
-  margin: 6px 0 24px;
+  padding: 14px 16px;
+  margin: 4px 0 22px;
 }
 .callout .label {
   font-family: var(--font-head);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   font-size: 10px;
   font-weight: 700;
   color: var(--muted);
@@ -170,7 +163,7 @@ p { margin: 0 0 16px; }
 }
 .callout .value { color: var(--black); font-weight: 600; margin: 0; }
 
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
+/* ── Buttons ─ full-width, generous tap target on phone ───────────────────── */
 .btn {
   -webkit-appearance: none;
   appearance: none;
@@ -179,16 +172,19 @@ p { margin: 0 0 16px; }
   justify-content: center;
   gap: 10px;
   width: 100%;
+  min-height: var(--tap);
   border: 0;
-  border-radius: 10px;
-  padding: 17px 26px;
+  border-radius: 12px;
+  padding: 15px 22px;
   font-family: var(--font-head);
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.18s ease, transform 0.06s ease, opacity 0.18s ease;
+  line-height: 1.2;
+  touch-action: manipulation;
+  transition: background-color 0.18s ease, transform 0.06s ease, border-color 0.15s ease;
 }
 .btn-primary { background: var(--red); color: #fff; }
 .btn-primary:hover { background: var(--red-deep); }
@@ -198,89 +194,63 @@ p { margin: 0 0 16px; }
   background: #e7c9c9;
   color: #fff;
   cursor: not-allowed;
-  opacity: 1;
 }
-.btn-ghost {
-  background: transparent;
-  color: var(--charcoal);
-  border: 1px solid var(--line);
-}
+.btn-ghost { background: transparent; color: var(--charcoal); border: 1px solid var(--line); }
 .btn-ghost:hover { border-color: var(--muted-soft); }
-
 .btn:focus-visible,
 .pos:focus-within { outline: 3px solid rgba(231, 22, 21, 0.35); outline-offset: 2px; }
 
-.actions { margin-top: 28px; }
+.actions { margin-top: 24px; }
 .actions .btn + .btn { margin-top: 12px; }
 
-/* ── Position cards (selection page) ─────────────────────────────────────── */
-.positions { display: flex; flex-direction: column; gap: 12px; margin: 6px 0 6px; }
-
+/* ── Position cards ─ big tap targets, clear selected state ────────────────── */
+.positions { display: flex; flex-direction: column; gap: 12px; margin: 4px 0; }
 .pos {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 15px;
+  min-height: 64px;
   border: 1.5px solid var(--line);
   border-radius: 12px;
-  padding: 18px 18px;
+  padding: 16px 18px;
   background: var(--surface);
   cursor: pointer;
+  touch-action: manipulation;
   transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 .pos:hover { border-color: var(--muted-soft); }
-
-.pos input[type="radio"] {
-  position: absolute;
-  opacity: 0;
-  width: 1px; height: 1px;
-}
-
+.pos input[type="radio"] { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .pos .marker {
   flex: 0 0 auto;
-  width: 22px; height: 22px;
+  width: 24px; height: 24px;
   border-radius: 50%;
   border: 2px solid var(--muted-soft);
   display: inline-block;
-  position: relative;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
-.pos .title {
-  font-family: var(--font-head);
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--black);
-}
-
-/* Selected state — unambiguous (Section 8). */
-.pos.is-selected,
-.pos input[type="radio"]:checked ~ .marker { /* fallback selector handled in JS-off below */ }
+.pos .title { font-family: var(--font-head); font-size: 16.5px; font-weight: 700; color: var(--black); }
 
 .pos input[type="radio"]:checked + .marker {
   border-color: var(--red);
   background: var(--red);
-  box-shadow: inset 0 0 0 4px #fff;
+  box-shadow: inset 0 0 0 5px #fff;
 }
 .pos:has(input[type="radio"]:checked) {
   border-color: var(--red);
   background: var(--selected-tint);
   box-shadow: var(--shadow-sm);
 }
-/* Class-based mirror for browsers without :has and for JS enhancement. */
+/* Class mirror for browsers without :has and for JS enhancement. */
 .pos.is-selected { border-color: var(--red); background: var(--selected-tint); box-shadow: var(--shadow-sm); }
-.pos.is-selected .marker { border-color: var(--red); background: var(--red); box-shadow: inset 0 0 0 4px #fff; }
+.pos.is-selected .marker { border-color: var(--red); background: var(--red); box-shadow: inset 0 0 0 5px #fff; }
 
-/* ── Confirmation summary ────────────────────────────────────────────────── */
-.summary {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-  margin: 6px 0 8px;
-}
-.summary .row { display: flex; padding: 15px 18px; border-bottom: 1px solid var(--line); }
+/* ── Confirmation summary ─────────────────────────────────────────────────── */
+.summary { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 4px 0 6px; }
+.summary .row { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .summary .row:last-child { border-bottom: 0; }
-.summary .k { flex: 0 0 40%; color: var(--muted); font-size: 14px; }
-.summary .v { flex: 1; color: var(--black); font-weight: 600; }
+.summary .k { flex: 0 0 100%; color: var(--muted); font-size: 13px; }
+.summary .v { flex: 1 1 100%; color: var(--black); font-weight: 600; }
 .summary .v.big { font-family: var(--font-head); font-size: 18px; }
 
 .selected-pill {
@@ -290,17 +260,17 @@ p { margin: 0 0 16px; }
   border: 1px solid #f3cfcf;
   font-weight: 700;
   border-radius: 999px;
-  padding: 4px 14px;
+  padding: 5px 15px;
   font-family: var(--font-head);
 }
 
 .success-mark {
-  width: 56px; height: 56px;
+  width: 54px; height: 54px;
   border-radius: 50%;
   background: var(--selected-tint);
   color: var(--red);
   display: flex; align-items: center; justify-content: center;
-  margin: 0 0 18px;
+  margin: 0 0 16px;
 }
 
 .footer {
@@ -308,18 +278,29 @@ p { margin: 0 0 16px; }
   text-align: center;
   color: var(--muted-soft);
   font-size: 12px;
-  padding: 26px 22px 34px;
-  line-height: 1.5;
+  padding: 24px 18px 30px;
+  line-height: 1.55;
 }
 .footer .sep { color: var(--line); }
 
-.notice {
-  text-align: center;
-  padding: 8px 0;
-}
+.notice { text-align: center; padding: 8px 0; }
 .notice .success-mark.neutral { background: #eee9e2; color: var(--muted); margin-left: auto; margin-right: auto; }
 
-/* Reduced motion. */
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+/* ── Scale up for tablets / desktop (candidate side is enhanced, not rebuilt) ─ */
+@media (min-width: 40rem) {
+  body { font-size: 17px; }
+  .masthead { padding: 28px 22px 6px; }
+  .brand { font-size: 12px; letter-spacing: 0.16em; }
+  .wrap { padding: 14px 22px 56px; }
+  .card { padding: 40px 38px; box-shadow: var(--shadow-md); }
+  h1 { font-size: 27px; }
+  .eyebrow { margin-bottom: 18px; letter-spacing: 0.18em; }
+  .callout { padding: 16px 18px; }
+  .summary .row { flex-wrap: nowrap; }
+  .summary .k { flex: 0 0 40%; font-size: 14px; }
+  .summary .v { flex: 1; }
+  .footer { padding: 26px 22px 34px; }
 }
+
+/* Reduced motion. */
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

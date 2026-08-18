@@ -16,26 +16,30 @@
 import { prisma } from '../src/lib/db.js';
 import { hashPassword } from '../src/admin/auth.js';
 
-// ⚠️ PLACEHOLDER position titles — confirm the real 7 with the client and edit here.
+// The 7 fixed positions, in the exact order from POSITIONS_SEED.md.
+// (Source list had "Process Technician" and "Electrical Specialist" listed twice;
+// treated as repeats, not distinct postings — confirm with Adekunle if wrong.)
 const POSITIONS = [
-  'Field Engineer',
-  'Process Engineer',
-  'Petroleum Engineer',
-  'Geoscientist',
-  'Facilities Engineer',
-  'Subsea Engineer',
-  'Operations Technician',
+  'Process Technician',
+  'Electrical Specialist',
+  'ICSR Specialist',
+  'Mechanical Specialist',
+  'Instrument Specialist',
+  'Maintenance Integrity Supervisor',
+  'Maintenance Co-ordinator',
 ];
 
-// Demo candidates. `shortlist` lists the position titles each was shortlisted for.
+// Demo candidates for local verification only. The real candidate → position
+// Shortlist mapping is outstanding and will be provided separately before send;
+// replace these when it arrives. `shortlist` lists the titles each was shortlisted for.
 const DEMO_CANDIDATES: { name: string; email: string; shortlist: string[] }[] = [
-  { name: 'Adaeze Okonkwo', email: 'adaeze.okonkwo@example.com', shortlist: ['Field Engineer', 'Process Engineer', 'Petroleum Engineer'] },
-  { name: 'Chukwuemeka Balogun', email: 'chukwuemeka.balogun@example.com', shortlist: ['Geoscientist', 'Petroleum Engineer'] },
-  { name: 'Fatima Ibrahim', email: 'fatima.ibrahim@example.com', shortlist: ['Facilities Engineer', 'Subsea Engineer', 'Process Engineer'] },
-  { name: 'Oluwaseun Adeyemi', email: 'oluwaseun.adeyemi@example.com', shortlist: ['Field Engineer', 'Operations Technician'] },
+  { name: 'Adaeze Okonkwo', email: 'adaeze.okonkwo@example.com', shortlist: ['Process Technician', 'Electrical Specialist', 'Instrument Specialist'] },
+  { name: 'Chukwuemeka Balogun', email: 'chukwuemeka.balogun@example.com', shortlist: ['Mechanical Specialist', 'Maintenance Co-ordinator'] },
+  { name: 'Fatima Ibrahim', email: 'fatima.ibrahim@example.com', shortlist: ['ICSR Specialist', 'Instrument Specialist', 'Electrical Specialist'] },
+  { name: 'Oluwaseun Adeyemi', email: 'oluwaseun.adeyemi@example.com', shortlist: ['Process Technician', 'Maintenance Integrity Supervisor'] },
   // Single-shortlist candidates — never emailed; auto-recorded at data-prep (FR6).
-  { name: 'Ngozi Eze', email: 'ngozi.eze@example.com', shortlist: ['Subsea Engineer'] },
-  { name: 'Ibrahim Sani', email: 'ibrahim.sani@example.com', shortlist: ['Operations Technician'] },
+  { name: 'Ngozi Eze', email: 'ngozi.eze@example.com', shortlist: ['Mechanical Specialist'] },
+  { name: 'Ibrahim Sani', email: 'ibrahim.sani@example.com', shortlist: ['Maintenance Co-ordinator'] },
 ];
 
 async function main() {

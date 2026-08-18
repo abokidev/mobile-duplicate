@@ -7,12 +7,15 @@ link sent by email, ahead of the aptitude test.
 
 - **No login, no account, no password.** One email → one token → one link → one
   irreversible choice.
-- Stack: **Node.js / TypeScript · Fastify · Prisma · MySQL** (server-rendered
-  candidate flow) · **ZeptoMail** (SMTP) — consistent with Project ATLAS.
+- Stack: **Node.js / TypeScript · Fastify · Prisma · MySQL** (server-rendered,
+  mobile-first candidate flow) · **ZeptoMail HTTP API** — consistent with Project ATLAS.
 
-> **Source of truth:** `ExxonMobil_PositionPreference_PSA.docx`, as amended by
-> `DEADLINE_ADDENDUM.md`. Where the two differ, the addendum wins (see
-> [Deadline handling](#deadline-handling) below).
+> **Source of truth:** `ExxonMobil_PositionPreference_PSA.docx`, as amended by these
+> addenda (each supersedes the PSA/prompt where they differ):
+> - `DEADLINE_ADDENDUM.md` — no deadline enforcement; the deadline is copy only.
+> - `EMAIL_INTEGRATION_ADDENDUM.md` — send via the ZeptoMail **HTTP API**, not SMTP.
+> - `MOBILE_FIRST_ADDENDUM.md` — the candidate flow is built mobile-first.
+> - `POSITIONS_SEED.md` — the 7 confirmed position titles.
 
 ---
 
@@ -39,10 +42,12 @@ Email → **Instructions** (`Hey {FirstName}`, rules in full, single *Proceed*) 
 (“You have selected {Position}. This cannot be changed. Confirm?”) →
 **Confirmation** (thank-you + summary).
 
-The flow is server-rendered and **degrades gracefully without JavaScript**: positions
-are real radio inputs in a plain form, and the server independently rejects an empty
-submit. Pages are light for phones on flaky connections, and reopening an unused token
-simply re-shows the current step rather than erroring.
+The flow is server-rendered, **mobile-first** (base styles target a phone; `min-width`
+queries scale up — `public/styles.css`), and **degrades gracefully without JavaScript**:
+positions are real radio inputs in a plain form, and the server independently rejects an
+empty submit. Pages are light for phones on flaky connections, tap targets are generous,
+and reopening an unused token simply re-shows the current step rather than erroring. The
+admin dashboard is desktop-oriented, as intended.
 
 ---
 
@@ -93,8 +98,9 @@ npx prisma migrate deploy      # applies prisma/migrations to DATABASE_URL
 
 ### 3. Load data
 
-Replace the placeholder positions and demo candidates in `scripts/seed.ts` with the
-client’s real data (see [Assumptions](#assumptions--to-confirm-with-the-client)), then:
+The 7 positions in `scripts/seed.ts` are the confirmed titles; replace the illustrative
+demo candidates/shortlist with the real candidate → position mapping when it arrives
+(see [Assumptions](#assumptions--to-confirm-with-the-client)), then:
 
 ```bash
 npm run seed            # 7 positions, candidates, shortlist, a demo admin
@@ -106,10 +112,17 @@ npm run tokens:issue    # issues tokens for multi-shortlisted; auto-records sing
 
 ### 4. Send the candidate emails
 
+Sending uses the **ZeptoMail HTTP API** (`api.zeptomail.com`, `Zoho-enczapikey` auth).
+The send script requires `ZEPTOMAIL_API_HOST`, `ZEPTOMAIL_AGENT_ALIAS`,
+`ZEPTOMAIL_SEND_TOKEN`, `SENDER_EMAIL`, `SENDER_NAME` in `.env` and **fails loudly** if
+any is missing (no hardcoded fallback). The send token is the full `Authorization`
+header value (it already includes the `Zoho-enczapikey` prefix) and must never be
+committed.
+
 ```bash
 npm run email:preview                              # writes emails/preview.html + .txt for QA
-npm run email:send -- out/tokens-<stamp>.csv --dry-run   # render + list recipients, no send
-npm run email:send -- out/tokens-<stamp>.csv             # send via ZeptoMail
+npm run email:send -- out/tokens-<stamp>.csv --dry-run   # render + validate config, no API call
+npm run email:send -- out/tokens-<stamp>.csv             # send via ZeptoMail HTTP API
 ```
 
 ### 5. Run the app
@@ -170,18 +183,19 @@ npm test        # runs prisma db push against TEST_DATABASE_URL, then the suite
 
 ## Assumptions — to confirm with the client
 
-These were needed but not supplied; sensible defaults are in place and clearly marked so
-they’re easy to replace:
-
-1. **The 7 position titles** are **placeholders** in `scripts/seed.ts` — replace with
-   the confirmed titles (and the real candidate → position shortlist mapping) before the
-   live send.
+1. **The candidate → position Shortlist mapping** is still **outstanding** (per
+   `POSITIONS_SEED.md`, it will be provided separately before send). The 7 position
+   titles are confirmed and seeded in order; the demo candidates/shortlist in
+   `scripts/seed.ts` are illustrative only — replace them when the real mapping arrives.
+   Also confirm with Adekunle the assumption that the source list’s duplicated
+   “Process Technician” / “Electrical Specialist” were repeats, not distinct postings.
 2. **Admin auth** is a self-contained scrypt + signed-session-cookie stand-in
    (`src/admin/auth.ts`). Swap `verifyPassword`/session issuance for Dragnet’s shared
    ATLAS admin mechanism (FR9) in production.
-3. **Email sender** defaults to `invitation@dragnet-solutions.com` (the existing
-   pattern) with a Dragnet/ExxonMobil display name — override via `EMAIL_FROM_*` in
-   `.env`, and set the real `ZEPTOMAIL_PASS` send token.
+3. **Email send token** must be supplied in the local `.env` as `ZEPTOMAIL_SEND_TOKEN`
+   (provided separately, not committed). Sender identity is fixed to
+   `Dragnet Solutions Limited <noreply@dragnet-solutions.com>` via `SENDER_NAME` /
+   `SENDER_EMAIL`.
 
 ## Project layout
 
