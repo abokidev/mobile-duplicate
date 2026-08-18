@@ -11,7 +11,7 @@ import {
 } from '../admin/auth.js';
 import { getDashboardData, toCsv } from '../admin/data.js';
 import {
-  adminBatchResultPage,
+  adminBatchStartedPage,
   adminConfirmSendPage,
   adminDashboardPage,
   adminImportResultPage,
@@ -21,9 +21,12 @@ import {
 } from '../admin/pages.js';
 import { commitImport, errorReportCsv, validateCsv } from '../admin/import.js';
 import { POSITION_TITLES } from '../lib/positions.js';
+import { loadEmailConfig } from '../lib/env.js';
 import {
   countInitialPending,
   countReminderPending,
+  isReminderRunning,
+  isSendRunning,
   sendInitialBatch,
   sendReminderBatch,
 } from '../admin/sending.js';
@@ -178,12 +181,22 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post('/admin/send', async (req, reply) => {
     const admin = await requireAdmin(req, reply);
     if (!admin) return;
+    // Validate email config up front so a misconfiguration is shown immediately
+    // rather than failing silently in the background.
     try {
-      const res = await sendInitialBatch();
-      return sendHtml(reply, 200, adminBatchResultPage('send', res));
+      loadEmailConfig({ requireToken: true });
     } catch (err) {
       return sendHtml(reply, 200, adminUploadPage({ error: `Send failed: ${(err as Error).message}` }));
     }
+    const alreadyRunning = isSendRunning();
+    const count = alreadyRunning ? 0 : await countInitialPending();
+    // Send in the background and return immediately — large lists must not block
+    // the request (an nginx 504 otherwise). Progress shows on the dashboard, and
+    // the batch is idempotent so it can be safely re-run to retry failures.
+    if (!alreadyRunning) {
+      void sendInitialBatch().catch((err) => app.log.error({ err }, 'initial send batch failed'));
+    }
+    return sendHtml(reply, 200, adminBatchStartedPage('send', count, alreadyRunning));
   });
 
   // ── Reminders ────────────────────────────────────────────────────────────────
@@ -198,10 +211,15 @@ export async function adminRoutes(app: FastifyInstance) {
     const admin = await requireAdmin(req, reply);
     if (!admin) return;
     try {
-      const res = await sendReminderBatch();
-      return sendHtml(reply, 200, adminBatchResultPage('remind', res));
+      loadEmailConfig({ requireToken: true });
     } catch (err) {
       return sendHtml(reply, 200, adminUploadPage({ error: `Reminder send failed: ${(err as Error).message}` }));
     }
+    const alreadyRunning = isReminderRunning();
+    const count = alreadyRunning ? 0 : await countReminderPending();
+    if (!alreadyRunning) {
+      void sendReminderBatch().catch((err) => app.log.error({ err }, 'reminder batch failed'));
+    }
+    return sendHtml(reply, 200, adminBatchStartedPage('remind', count, alreadyRunning));
   });
 }

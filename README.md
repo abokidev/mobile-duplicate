@@ -94,6 +94,20 @@ The admin dashboard (`/admin`) now runs the whole campaign — no manual seed ha
    flagged as such in the dashboard. `reminder_count` / `last_reminder_sent_at` are tracked
    per token to avoid spamming.
 
+### Large lists
+
+Import and send are built for large candidate lists (1000s):
+
+- **Commit** bulk-inserts in chunks (candidates → shortlist → tokens/selections)
+  inside short transactions — ~200ms for 1300 candidates, versus a per-row loop that
+  would exceed the reverse-proxy timeout (an nginx 504). Re-running is idempotent
+  (existing emails are skipped).
+- **Send / reminders** run in the **background** and the request returns immediately,
+  so a batch of hundreds of ZeptoMail calls never blocks the request. Progress shows on
+  the dashboard (each candidate moves to *Sent*), an in-process guard prevents a
+  double-click from double-sending, and the batch is idempotent — re-run it to retry
+  only the candidates not yet emailed.
+
 ### Security note — retained delivery token
 
 The separated upload→send flow, same-link reminders, and send retries all require the

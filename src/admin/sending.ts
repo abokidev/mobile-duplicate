@@ -100,8 +100,31 @@ export interface BatchResult {
   errors: { email: string; error: string }[];
 }
 
+// In-process guards so a second click while a batch is still running cannot
+// double-send (each batch only targets tokens without a prior `sent`, but a
+// token mid-flight has not been marked yet).
+let initialRunning = false;
+let reminderRunning = false;
+
+export function isSendRunning(): boolean {
+  return initialRunning;
+}
+export function isReminderRunning(): boolean {
+  return reminderRunning;
+}
+
 /** Initial email batch (Admin Upload addendum §1 "Send"). */
 export async function sendInitialBatch(): Promise<BatchResult> {
+  if (initialRunning) return { attempted: 0, succeeded: 0, failed: 0, errors: [] };
+  initialRunning = true;
+  try {
+    return await runInitialBatch();
+  } finally {
+    initialRunning = false;
+  }
+}
+
+async function runInitialBatch(): Promise<BatchResult> {
   const cfg = loadEmailConfig({ requireToken: true });
   const pending = await loadInitialPending();
   const result: BatchResult = { attempted: pending.length, succeeded: 0, failed: 0, errors: [] };
@@ -129,8 +152,18 @@ export async function sendInitialBatch(): Promise<BatchResult> {
   return result;
 }
 
-/** Reminder batch (Admin Upload addendum §3). Uses the DRAFT reminder copy. */
+/** Reminder batch (Admin Upload addendum §3). */
 export async function sendReminderBatch(): Promise<BatchResult> {
+  if (reminderRunning) return { attempted: 0, succeeded: 0, failed: 0, errors: [] };
+  reminderRunning = true;
+  try {
+    return await runReminderBatch();
+  } finally {
+    reminderRunning = false;
+  }
+}
+
+async function runReminderBatch(): Promise<BatchResult> {
   const cfg = loadEmailConfig({ requireToken: true });
   const pending = await loadReminderPending();
   const result: BatchResult = { attempted: pending.length, succeeded: 0, failed: 0, errors: [] };
