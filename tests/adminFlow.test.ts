@@ -71,7 +71,7 @@ beforeEach(async () => {
 
 const CSV =
   'name,email,positions\n' +
-  'Adaeze Okafor,adaeze@example.com,Process Technician;Electrical Specialist\n' + // multi
+  'Adaeze Okafor,adaeze@example.com,Process Technician; Electrical Specialist\n' + // multi (exact row, space after ;)
   'Bem Aïcha,bem@example.com,Mechanical Specialist\n' + // single
   'Bad Row,not-an-email,Process Technician\n' + // error
   'Chidi Uzo,chidi@example.com,Unknown Role\n'; // error (unknown title)

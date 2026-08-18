@@ -19,6 +19,18 @@ describe('admin CSV import validation', () => {
     ]);
   });
 
+  it('splits the exact reported row on ";" into two valid titles, not one invalid one', () => {
+    // Regression: "Process Technician; Electrical Specialist" must resolve to two
+    // valid titles (multi-shortlisted), never a single unmatched title.
+    const rows = rowsFromCsv('name,email,positions\nAdaeze Okafor,adaeze@example.com,Process Technician; Electrical Specialist\n');
+    expect(rows[0].positions).toEqual(['Process Technician', 'Electrical Specialist']);
+    const res = validateRows(rows, TITLES, new Set());
+    expect(res.bad).toHaveLength(0);
+    expect(res.good).toHaveLength(1);
+    expect(res.good[0].positions).toEqual(['Process Technician', 'Electrical Specialist']);
+    expect(res.good[0].multi).toBe(true);
+  });
+
   it('classifies multi vs single shortlisted and lowercases email', () => {
     const rows = rowsFromCsv(
       'name,email,positions\n' +
