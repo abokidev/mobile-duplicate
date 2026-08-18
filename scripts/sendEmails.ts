@@ -27,6 +27,7 @@ interface Row {
   name: string;
   email: string;
   url: string;
+  positions: string[];
 }
 
 /** Tiny CSV parser handling quoted fields (sufficient for our 3-column export). */
@@ -56,17 +57,22 @@ function parseCsv(text: string): Row[] {
     name: header.indexOf('name'),
     email: header.indexOf('email'),
     url: header.indexOf('selection_url'),
+    positions: header.indexOf('positions'),
   };
   if (idx.email < 0 || idx.url < 0) {
-    throw new Error('CSV must have columns: name,email,selection_url');
+    throw new Error('CSV must have columns: name,email,selection_url[,positions]');
   }
   return body
     .filter((r) => r[idx.email])
-    .map((r) => ({ name: r[idx.name] ?? '', email: r[idx.email], url: r[idx.url] }));
-}
-
-function firstNameOf(name: string): string {
-  return name.trim().split(/\s+/)[0] || name || 'there';
+    .map((r) => ({
+      name: r[idx.name] ?? '',
+      email: r[idx.email],
+      url: r[idx.url],
+      positions:
+        idx.positions >= 0 && r[idx.positions]
+          ? r[idx.positions].split(';').map((s) => s.trim()).filter(Boolean)
+          : [],
+    }));
 }
 
 function latestTokensFile(): string {
@@ -97,14 +103,18 @@ async function main() {
   let sent = 0;
   let failed = 0;
   for (const row of rows) {
-    const firstName = firstNameOf(row.name);
+    if (row.positions.length === 0) {
+      console.error(`  ✗ ${row.email}: no positions in CSV — re-run tokens:issue. Skipping.`);
+      failed++;
+      continue;
+    }
     const payload = {
       from: { address: cfg.senderEmail, name: cfg.senderName },
       to: [{ email_address: { address: row.email, name: row.name } }],
       ...(cfg.replyTo ? { reply_to: [{ address: cfg.replyTo }] } : {}),
-      subject: candidateEmailSubject(),
-      htmlbody: candidateEmailHtml({ firstName, selectionUrl: row.url }),
-      textbody: candidateEmailText({ firstName, selectionUrl: row.url }),
+      subject: candidateEmailSubject(row.positions),
+      htmlbody: candidateEmailHtml({ positionTitles: row.positions, selectionUrl: row.url }),
+      textbody: candidateEmailText({ positionTitles: row.positions, selectionUrl: row.url }),
     };
 
     if (dryRun) {

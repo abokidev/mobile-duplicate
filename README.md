@@ -16,6 +16,8 @@ link sent by email, ahead of the aptitude test.
 > - `EMAIL_INTEGRATION_ADDENDUM.md` — send via the ZeptoMail **HTTP API**, not SMTP.
 > - `MOBILE_FIRST_ADDENDUM.md` — the candidate flow is built mobile-first.
 > - `POSITIONS_SEED.md` — the 7 confirmed position titles.
+> - `EMAIL_COPY_CORRECTION_ADDENDUM.md` — the email uses the approved copy verbatim
+>   (greeting `Dear Applicant,`, confirmed with Adekunle).
 
 ---
 
@@ -111,6 +113,13 @@ npm run tokens:issue    # issues tokens for multi-shortlisted; auto-records sing
 (git-ignored — it contains raw tokens). This file feeds the email send.
 
 ### 4. Send the candidate emails
+
+The email body is the **approved copy, verbatim** (`src/lib/email.ts`) — greeting
+`Dear Applicant,`, no rewriting. The only per-candidate variables are the shortlisted
+position titles (inserted, bolded, into paragraph 1 and the subject line
+`ExxonMobil Affiliates in Nigeria <titles> Job Preferences`). `tokens:issue` writes each
+candidate's titles into a `positions` column in `out/tokens-*.csv`, which the send script
+formats into the `A, B and C` list used in the copy.
 
 Sending uses the **ZeptoMail HTTP API** (`api.zeptomail.com`, `Zoho-enczapikey` auth).
 The send script requires `ZEPTOMAIL_API_HOST`, `ZEPTOMAIL_AGENT_ALIAS`,

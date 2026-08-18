@@ -29,17 +29,24 @@ function csvEscape(v: string): string {
 
 async function main() {
   const candidates = await prisma.candidate.findMany({
-    include: { shortlist: true, token: true, selection: true },
+    include: {
+      shortlist: { include: { position: true } },
+      token: true,
+      selection: true,
+    },
     orderBy: { id: 'asc' },
   });
 
-  const issued: { name: string; email: string; url: string }[] = [];
+  const issued: { name: string; email: string; url: string; positions: string }[] = [];
   let autoRecorded = 0;
   let alreadyTokened = 0;
   let alreadyAuto = 0;
 
   for (const c of candidates) {
     const positionIds = c.shortlist.map((s) => s.positionId);
+    const positionTitles = c.shortlist
+      .map((s) => s.position.title)
+      .sort((a, b) => a.localeCompare(b));
 
     if (positionIds.length === 0) {
       console.warn(`! ${c.email} has no shortlist rows — skipping.`);
@@ -75,7 +82,9 @@ async function main() {
       data: { candidateId: c.id, tokenHash: hashToken(rawToken) },
     });
     const url = `${env.publicBaseUrl}/s/${rawToken}`;
-    issued.push({ name: c.name, email: c.email, url });
+    // Positions are joined with "; " in the CSV; the send script re-formats them
+    // into the "A, B and C" list used in the email copy.
+    issued.push({ name: c.name, email: c.email, url, positions: positionTitles.join('; ') });
   }
 
   // Write the raw-token URLs for THIS run (gitignored — contains raw tokens).
@@ -85,8 +94,8 @@ async function main() {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const file = join(outDir, `tokens-${stamp}.csv`);
     const lines = [
-      'name,email,selection_url',
-      ...issued.map((r) => [r.name, r.email, r.url].map(csvEscape).join(',')),
+      'name,email,selection_url,positions',
+      ...issued.map((r) => [r.name, r.email, r.url, r.positions].map(csvEscape).join(',')),
     ];
     writeFileSync(file, lines.join('\n') + '\n', 'utf8');
     console.log(`\nWrote ${issued.length} raw tokenised URL(s) to ${file}`);
