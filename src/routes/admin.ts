@@ -12,6 +12,7 @@ import {
 import { getDashboardData, toCsv } from '../admin/data.js';
 import {
   adminBatchStartedPage,
+  adminChooseTemplatePage,
   adminConfirmSendPage,
   adminDashboardPage,
   adminImportResultPage,
@@ -19,6 +20,7 @@ import {
   adminPreviewPage,
   adminUploadPage,
 } from '../admin/pages.js';
+import type { MessageTemplate } from '../lib/email.js';
 import { commitImport, errorReportCsv, validateCsv } from '../admin/import.js';
 import { POSITION_TITLES } from '../lib/positions.js';
 import { loadEmailConfig } from '../lib/env.js';
@@ -171,11 +173,25 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 
   // ── Send invitations ────────────────────────────────────────────────────────
+  const parseTemplate = (body: unknown): MessageTemplate => {
+    const v = (body as Record<string, unknown> | null)?.template;
+    return v === 'message_2' ? 'message_2' : 'message_1';
+  };
+
+  // Step 1: choose which approved message to send (Message Template Choice addendum).
+  app.post('/admin/send/choose', async (req, reply) => {
+    const admin = await requireAdmin(req, reply);
+    if (!admin) return;
+    return sendHtml(reply, 200, adminChooseTemplatePage());
+  });
+
+  // Step 2: confirmation, carrying the chosen template through.
   app.post('/admin/send/preview', async (req, reply) => {
     const admin = await requireAdmin(req, reply);
     if (!admin) return;
+    const template = parseTemplate(req.body);
     const count = await countInitialPending();
-    return sendHtml(reply, 200, adminConfirmSendPage({ kind: 'send', count, action: '/admin/send' }));
+    return sendHtml(reply, 200, adminConfirmSendPage({ kind: 'send', count, action: '/admin/send', template }));
   });
 
   app.post('/admin/send', async (req, reply) => {
@@ -188,13 +204,14 @@ export async function adminRoutes(app: FastifyInstance) {
     } catch (err) {
       return sendHtml(reply, 200, adminUploadPage({ error: `Send failed: ${(err as Error).message}` }));
     }
+    const template = parseTemplate(req.body);
     const alreadyRunning = isSendRunning();
     const count = alreadyRunning ? 0 : await countInitialPending();
     // Send in the background and return immediately — large lists must not block
     // the request (an nginx 504 otherwise). Progress shows on the dashboard, and
     // the batch is idempotent so it can be safely re-run to retry failures.
     if (!alreadyRunning) {
-      void sendInitialBatch().catch((err) => app.log.error({ err }, 'initial send batch failed'));
+      void sendInitialBatch(template).catch((err) => app.log.error({ err }, 'initial send batch failed'));
     }
     return sendHtml(reply, 200, adminBatchStartedPage('send', count, alreadyRunning));
   });

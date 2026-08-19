@@ -148,7 +148,7 @@ export function adminDashboardPage(
         <div class="actioncard">
           <h3>Send invitations</h3>
           <p>${c.notSent + c.sendFailed} candidate(s) awaiting their first email${c.sendFailed > 0 ? raw(` · <span style="color:var(--red-deep)">${c.sendFailed} failed</span>`) : raw('')}.</p>
-          <form method="POST" action="/admin/send/preview" style="margin:0"><button class="btn btn-primary small">Send invitations…</button></form>
+          <form method="POST" action="/admin/send/choose" style="margin:0"><button class="btn btn-primary small">Send invitations…</button></form>
         </div>
         <div class="actioncard">
           <h3>Send reminders</h3>
@@ -329,26 +329,74 @@ export function adminImportResultPage(res: {
   return layout({ title: 'Import complete · Admin', bodyHtml: body });
 }
 
+/**
+ * Template-choice step shown before the send confirmation (Message Template
+ * Choice addendum): pick Message 1 or Message 2 for this batch of invitations.
+ */
+export function adminChooseTemplatePage(): string {
+  const option = (value: string, label: string, blurb: string) => html`
+    <form method="POST" action="/admin/send/preview" style="margin:0 0 12px">
+      <input type="hidden" name="template" value="${value}" />
+      <button type="submit" class="pick">
+        <span class="pick-title">${label}</span>
+        <span class="pick-blurb">${blurb}</span>
+        <span class="pick-arrow" aria-hidden="true">→</span>
+      </button>
+    </form>`;
+  const body = html`
+    <div class="card" style="max-width:36rem;margin:0 auto">
+      <p class="eyebrow">Send invitations · Step 1 of 2</p>
+      <h1>Which message do you want to send?</h1>
+      <p class="lede muted">Choose the approved copy for this batch. You’ll confirm the recipient count next.</p>
+      ${raw(option('message_1', 'Message 1', 'Original approved invitation.'))}
+      ${raw(option('message_2', 'Message 2', 'For candidates who applied under more than one email address.'))}
+      <form method="GET" action="/admin" style="margin-top:6px"><button class="btn btn-ghost">Cancel</button></form>
+    </div>
+    <style>
+      .pick { display:flex; align-items:center; gap:14px; width:100%; text-align:left; cursor:pointer;
+        background:var(--surface); border:1.5px solid var(--line); border-radius:12px; padding:18px 20px;
+        font-family:var(--font-body); transition:border-color .15s ease, background-color .15s ease; }
+      .pick:hover { border-color:var(--red); background:var(--selected-tint); }
+      .pick-title { font-family:var(--font-head); font-weight:700; font-size:17px; color:var(--black); }
+      .pick-blurb { color:var(--muted); font-size:14px; flex:1; }
+      .pick-arrow { color:var(--red); font-family:var(--font-head); font-weight:700; font-size:18px; }
+    </style>
+  `;
+  return layout({ title: 'Choose message · Admin', bodyHtml: body });
+}
+
+const TEMPLATE_LABEL: Record<string, string> = { message_1: 'Message 1', message_2: 'Message 2' };
+
 export function adminConfirmSendPage(opts: {
   kind: 'send' | 'remind';
   count: number;
   action: string;
+  template?: string;
 }): string {
   const isRemind = opts.kind === 'remind';
+  const templateHidden = opts.template
+    ? raw(html`<input type="hidden" name="template" value="${esc(opts.template)}" />`)
+    : raw('');
+  const templateNote =
+    !isRemind && opts.template
+      ? raw(html`<p class="muted" style="font-size:14px">Using <strong>${TEMPLATE_LABEL[opts.template] ?? opts.template}</strong>.</p>`)
+      : raw('');
   const body = html`
     <div class="card" style="max-width:34rem;margin:0 auto">
-      <p class="eyebrow">${isRemind ? 'Send reminders' : 'Send invitations'}</p>
+      <p class="eyebrow">${isRemind ? 'Send reminders' : 'Send invitations · Step 2 of 2'}</p>
       <h1>${isRemind ? 'Remind pending candidates?' : 'Send invitation emails?'}</h1>
       <p class="lede">
         This will email <strong>${opts.count}</strong> candidate(s)${isRemind ? ' who have not yet responded' : ' awaiting their first invitation'}.
       </p>
+      ${templateNote}
       ${opts.count === 0
         ? raw(html`<p class="muted">There is no one to email right now.</p><div class="actions"><a class="btn btn-ghost" href="/admin">Back to dashboard</a></div>`)
         : raw(html`
           <form method="POST" action="${esc(opts.action)}" class="actions" data-final-form>
+            ${templateHidden}
             <button type="submit" class="btn btn-primary">${isRemind ? `Send ${opts.count} reminder(s)` : `Send ${opts.count} invitation(s)`}</button>
           </form>
-          <form method="GET" action="/admin" style="margin-top:12px"><button class="btn btn-ghost">Cancel</button></form>`)}
+          <form method="${isRemind ? 'GET' : 'POST'}" action="${isRemind ? '/admin' : '/admin/send/choose'}" style="margin-top:12px"><button class="btn btn-ghost">${isRemind ? 'Cancel' : 'Back'}</button></form>`)}
     </div>
   `;
   return layout({ title: isRemind ? 'Confirm reminders · Admin' : 'Confirm send · Admin', bodyHtml: body, withScript: true });

@@ -97,6 +97,8 @@ model Event {
   type       EventType
   /// Free text: error message for send_failed, etc.
   detail     String?   @db.Text
+  /// Which invitation copy was used on a `sent` event ("message_1"/"message_2").
+  messageTemplate String? @map("message_template")
   occurredAt DateTime  @default(now()) @map("occurred_at")
 
   token Token @relation(fields: [tokenId], references: [id], onDelete: Cascade)

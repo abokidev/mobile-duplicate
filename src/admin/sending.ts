@@ -7,6 +7,7 @@ import {
   candidateEmailHtml,
   candidateEmailSubject,
   candidateEmailText,
+  type MessageTemplate,
 } from '../lib/email.js';
 import {
   reminderEmailHtml,
@@ -113,18 +114,18 @@ export function isReminderRunning(): boolean {
   return reminderRunning;
 }
 
-/** Initial email batch (Admin Upload addendum §1 "Send"). */
-export async function sendInitialBatch(): Promise<BatchResult> {
+/** Initial email batch (Admin Upload addendum §1 "Send"). Uses the chosen template. */
+export async function sendInitialBatch(template: MessageTemplate = 'message_1'): Promise<BatchResult> {
   if (initialRunning) return { attempted: 0, succeeded: 0, failed: 0, errors: [] };
   initialRunning = true;
   try {
-    return await runInitialBatch();
+    return await runInitialBatch(template);
   } finally {
     initialRunning = false;
   }
 }
 
-async function runInitialBatch(): Promise<BatchResult> {
+async function runInitialBatch(template: MessageTemplate): Promise<BatchResult> {
   const cfg = loadEmailConfig({ requireToken: true });
   const pending = await loadInitialPending();
   const result: BatchResult = { attempted: pending.length, succeeded: 0, failed: 0, errors: [] };
@@ -135,11 +136,11 @@ async function runInitialBatch(): Promise<BatchResult> {
       toAddress: ctx.email,
       toName: ctx.name,
       subject: candidateEmailSubject(ctx.titles),
-      htmlBody: candidateEmailHtml({ firstName: firstNameOf(ctx.name), positionTitles: ctx.titles, selectionUrl, pixelUrl }),
-      textBody: candidateEmailText({ firstName: firstNameOf(ctx.name), positionTitles: ctx.titles, selectionUrl }),
+      htmlBody: candidateEmailHtml({ firstName: firstNameOf(ctx.name), positionTitles: ctx.titles, selectionUrl, pixelUrl, template }),
+      textBody: candidateEmailText({ firstName: firstNameOf(ctx.name), positionTitles: ctx.titles, selectionUrl, template }),
     });
     if (res.ok) {
-      await logEvent(ctx.tokenId, 'sent');
+      await logEvent(ctx.tokenId, 'sent', null, template);
       // NB: deliveryEnc is intentionally retained (for reminders/resend) until the
       // candidate submits, at which point recordSelection purges it.
       result.succeeded++;

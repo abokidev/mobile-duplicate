@@ -102,6 +102,11 @@ Import and send are built for large candidate lists (1000s):
   inside short transactions — ~200ms for 1300 candidates, versus a per-row loop that
   would exceed the reverse-proxy timeout (an nginx 504). Re-running is idempotent
   (existing emails are skipped).
+- **Send invitations** first asks which approved copy to use — **Message 1** (original) or
+  **Message 2** (adds a line for candidates who applied under more than one email address) —
+  then shows the usual recipient-count confirmation. Only paragraph 2 differs; the premium
+  design and per-candidate title substitution are identical. Which template was used is
+  recorded on each `sent` event (`events.message_template`).
 - **Send / reminders** run in the **background** and the request returns immediately,
   so a batch of hundreds of ZeptoMail calls never blocks the request. Progress shows on
   the dashboard (each candidate moves to *Sent*), an in-process guard prevents a

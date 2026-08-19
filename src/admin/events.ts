@@ -2,9 +2,16 @@ import type { EventType } from '@prisma/client';
 import { prisma } from '../lib/db.js';
 
 /** Record a timeline event for a token. Best-effort — never throws to callers. */
-export async function logEvent(tokenId: number, type: EventType, detail?: string): Promise<void> {
+export async function logEvent(
+  tokenId: number,
+  type: EventType,
+  detail?: string | null,
+  messageTemplate?: string | null
+): Promise<void> {
   try {
-    await prisma.event.create({ data: { tokenId, type, detail: detail ?? null } });
+    await prisma.event.create({
+      data: { tokenId, type, detail: detail ?? null, messageTemplate: messageTemplate ?? null },
+    });
   } catch {
     // Tracking is best-effort; never let it break the candidate or send flow.
   }
