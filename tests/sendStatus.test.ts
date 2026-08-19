@@ -45,6 +45,17 @@ describe('send status is driven by token.sentAt (reliable), not the best-effort 
     expect(data.rows[0].sentAt).toBeNull();
   });
 
+  it('backward-compatible: a candidate already marked sent via the OLD event (no sentAt) is unaffected', async () => {
+    const { tokenId } = await makeMultiCandidateWithToken();
+    // Simulate data written by an earlier version: a `sent` event, but sentAt null.
+    await prisma.event.create({ data: { tokenId, type: 'sent' } });
+
+    expect(await countInitialPending()).toBe(0); // NOT re-queued → no duplicate email
+    expect(await countReminderPending()).toBe(1); // still reminder-eligible
+    const data = await getDashboardData();
+    expect(data.rows[0].stage).toBe('sent'); // dashboard still shows Sent
+  });
+
   it('after sentAt is set (even with NO sent event): shows "Sent", not pending, and is reminder-eligible', async () => {
     const { tokenId } = await makeMultiCandidateWithToken();
     // Simulate what the send batch writes on success — the authoritative marker,

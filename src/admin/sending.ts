@@ -34,12 +34,19 @@ function firstNameOf(name: string): string {
   return name.trim().split(/\s+/)[0] || name || 'there';
 }
 
-/** Tokens awaiting their INITIAL send: raw still retained and no successful `sent` yet. */
+// "Already sent" = the reliable sent_at marker is set, OR (backward-compatible)
+// a `sent` event was recorded by an earlier version. Honouring the old event means
+// candidates already marked sent are never re-emailed after this upgrade — no
+// backfill required, nothing changes for them.
+const ALREADY_SENT = { OR: [{ sentAt: { not: null } }, { events: { some: { type: 'sent' as const } } }] };
+const NOT_YET_SENT = { sentAt: null, events: { none: { type: 'sent' as const } } };
+
+/** Tokens awaiting their INITIAL send: raw still retained and not sent by either signal. */
 async function loadInitialPending(): Promise<SendContext[]> {
   const tokens = await prisma.token.findMany({
     where: {
       deliveryEnc: { not: null },
-      sentAt: null,
+      ...NOT_YET_SENT,
     },
     include: { candidate: { include: { shortlist: { include: { position: true } } } } },
   });
@@ -52,7 +59,7 @@ async function loadReminderPending(): Promise<SendContext[]> {
     where: {
       status: 'unused',
       deliveryEnc: { not: null },
-      sentAt: { not: null },
+      ...ALREADY_SENT,
     },
     include: { candidate: { include: { shortlist: { include: { position: true } } } } },
   });
@@ -84,13 +91,13 @@ function toContexts(
 
 export async function countInitialPending(): Promise<number> {
   return prisma.token.count({
-    where: { deliveryEnc: { not: null }, sentAt: null },
+    where: { deliveryEnc: { not: null }, ...NOT_YET_SENT },
   });
 }
 
 export async function countReminderPending(): Promise<number> {
   return prisma.token.count({
-    where: { status: 'unused', deliveryEnc: { not: null }, sentAt: { not: null } },
+    where: { status: 'unused', deliveryEnc: { not: null }, ...ALREADY_SENT },
   });
 }
 

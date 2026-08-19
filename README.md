@@ -123,8 +123,13 @@ delivered candidates as *“Not sent”*. Send status is now the authoritative
 event), so it stays correct and a tracking hiccup can never cause a re-send — but the
 column still has to exist, so **migrations must be applied**.
 
-If you upgrade a database that already sent invitations before `sent_at` existed,
-backfill it once so those people are not re-emailed:
+**Upgrading a database that already sent invitations is safe with no extra step.**
+Candidates already marked sent by the previous version (a `sent` event, no `sent_at`)
+are still recognised as sent — they are never re-emailed and still show *Sent*. Only
+newly-added candidates use the new `sent_at` marker. The backfill script below is
+**optional**, for the edge case where emails were delivered but no record was written
+at all (e.g. sent while the tracking migration was missing) and you want to reconcile
+them without re-sending:
 
 ```bash
 npm run backfill:sent          # marks tokens with proof of delivery (opened/visited/submitted)
