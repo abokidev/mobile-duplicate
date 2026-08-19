@@ -154,18 +154,32 @@ describe('admin upload → preview → commit → tracking (in-process)', () => 
     expect(dash.body).toContain('best-effort'); // honesty note about "opened"
   });
 
-  it('reports the pending count on the send-invitations confirm step', async () => {
+  it('offers a template choice, then carries it into the confirm step', async () => {
     await app.inject({
       method: 'POST',
       url: '/admin/upload/commit',
       headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
       payload: `csv=${encodeURIComponent(CSV)}`,
     });
-    const res = await app.inject({ method: 'POST', url: '/admin/send/preview', headers: { cookie } });
+    // Step 1: template choice
+    const choose = await app.inject({ method: 'POST', url: '/admin/send/choose', headers: { cookie } });
+    expect(choose.statusCode).toBe(200);
+    expect(choose.body).toContain('Which message do you want to send?');
+    expect(choose.body).toContain('value="message_1"');
+    expect(choose.body).toContain('value="message_2"');
+
+    // Step 2: confirm carries the chosen template through in a hidden field
+    const res = await app.inject({
+      method: 'POST',
+      url: '/admin/send/preview',
+      headers: { cookie, 'content-type': 'application/x-www-form-urlencoded' },
+      payload: 'template=message_2',
+    });
     expect(res.statusCode).toBe(200);
-    // one multi-shortlisted candidate is awaiting its first email
     expect(res.body).toContain('Send invitation emails?');
-    expect(res.body).toMatch(/email <strong>1<\/strong>/);
+    expect(res.body).toMatch(/email <strong>1<\/strong>/); // one multi-shortlisted pending
+    expect(res.body).toContain('Using <strong>Message 2</strong>');
+    expect(res.body).toContain('name="template" value="message_2"');
   });
 
   it('shows a clear "seed positions first" message when the positions table is empty', async () => {

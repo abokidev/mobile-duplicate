@@ -16,6 +16,9 @@ import { esc } from './html.js';
  * not pulled from config. (The instructions PAGE keeps its own copy via env.)
  */
 
+/** Which approved invitation copy to send (Message Template Choice addendum). */
+export type MessageTemplate = 'message_1' | 'message_2';
+
 export interface CandidateEmailInput {
   /** Candidate first name for the personalised greeting ("Dear {FirstName},"). */
   firstName: string;
@@ -24,6 +27,19 @@ export interface CandidateEmailInput {
   selectionUrl: string;
   /** Optional per-token open-tracking pixel URL (best-effort — see addendum §2). */
   pixelUrl?: string;
+  /** Which approved copy to use. Defaults to message_1 (the original). */
+  template?: MessageTemplate;
+}
+
+// Paragraph 2 is the ONLY difference between the two approved messages. Both are
+// verbatim/mandatory — no line may be changed, shortened, or reworded.
+const PARA2_MESSAGE_1 =
+  'Candidates who applied for multiple positions are to take the test for only one position i.e. any candidate who takes the aptitude test more than once will be disqualified.';
+const PARA2_MESSAGE_2 =
+  'We noticed that you applied for more than one position using different email addresses. Kindly note that candidates who applied for multiple positions are to take the test for only one position i.e. any candidate who takes the aptitude test more than once will be disqualified.';
+
+function para2For(template: MessageTemplate | undefined): string {
+  return template === 'message_2' ? PARA2_MESSAGE_2 : PARA2_MESSAGE_1;
 }
 
 /** Natural-language list join, e.g. ["A"]→"A", ["A","B"]→"A and B", ["A","B","C"]→"A, B and C". */
@@ -49,6 +65,7 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
   const url = esc(input.selectionUrl);
   const first = esc(input.firstName);
   const titles = esc(formatPositionList(input.positionTitles));
+  const para2 = esc(para2For(input.template));
   const pixel = input.pixelUrl
     ? `<img src="${esc(input.pixelUrl)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
     : '';
@@ -128,8 +145,7 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
                 as part of the selection process.
               </p>
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
-                Candidates who applied for multiple positions are to take the test for only one position
-                i.e. any candidate who takes the aptitude test more than once will be disqualified.
+                ${para2}
               </p>
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 20px 0;">
                 Please take a moment to indicate your preferred position using the button below. You will only
@@ -230,7 +246,7 @@ export function candidateEmailText(input: CandidateEmailInput): string {
     ``,
     `Further to your application to ExxonMobil Affiliates in Nigeria for the following positions: ${titles}, you have been shortlisted to complete an online computer-based aptitude and skills test on Saturday, 29th August 2026 as part of the selection process.`,
     ``,
-    `Candidates who applied for multiple positions are to take the test for only one position i.e. any candidate who takes the aptitude test more than once will be disqualified.`,
+    para2For(input.template),
     ``,
     `Please take a moment to indicate your preferred position using the button below. You will only see the positions you were shortlisted for, and you can submit your choice once. Once you confirm your choice, it cannot be changed.`,
     ``,

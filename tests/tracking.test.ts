@@ -3,6 +3,7 @@ import { prisma } from '../src/lib/db.js';
 import { generateRawToken, hashToken } from '../src/lib/token.js';
 import { encryptDeliveryToken, decryptDeliveryToken } from '../src/lib/crypto.js';
 import { recordSelection } from '../src/lib/selection.js';
+import { logEvent } from '../src/admin/events.js';
 
 async function resetDb() {
   await prisma.event.deleteMany();
@@ -26,6 +27,21 @@ describe('delivery-token encryption', () => {
     expect(decryptDeliveryToken(enc)).toBe(raw);
     expect(decryptDeliveryToken('v1:aaa:bbb:ccc')).toBeNull();
     expect(decryptDeliveryToken('garbage')).toBeNull();
+  });
+});
+
+describe('sent event records which message template was used', () => {
+  it('stores message_template on the sent event', async () => {
+    const candidate = await prisma.candidate.create({
+      data: { name: 'Ada', email: `ada+${Date.now()}@x.com` },
+    });
+    const raw = generateRawToken();
+    const token = await prisma.token.create({
+      data: { candidateId: candidate.id, tokenHash: hashToken(raw), deliveryEnc: encryptDeliveryToken(raw) },
+    });
+    await logEvent(token.id, 'sent', null, 'message_2');
+    const ev = await prisma.event.findFirstOrThrow({ where: { tokenId: token.id, type: 'sent' } });
+    expect(ev.messageTemplate).toBe('message_2');
   });
 });
 
