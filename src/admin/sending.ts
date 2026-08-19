@@ -39,7 +39,7 @@ async function loadInitialPending(): Promise<SendContext[]> {
   const tokens = await prisma.token.findMany({
     where: {
       deliveryEnc: { not: null },
-      events: { none: { type: 'sent' } },
+      sentAt: null,
     },
     include: { candidate: { include: { shortlist: { include: { position: true } } } } },
   });
@@ -52,7 +52,7 @@ async function loadReminderPending(): Promise<SendContext[]> {
     where: {
       status: 'unused',
       deliveryEnc: { not: null },
-      events: { some: { type: 'sent' } },
+      sentAt: { not: null },
     },
     include: { candidate: { include: { shortlist: { include: { position: true } } } } },
   });
@@ -84,13 +84,13 @@ function toContexts(
 
 export async function countInitialPending(): Promise<number> {
   return prisma.token.count({
-    where: { deliveryEnc: { not: null }, events: { none: { type: 'sent' } } },
+    where: { deliveryEnc: { not: null }, sentAt: null },
   });
 }
 
 export async function countReminderPending(): Promise<number> {
   return prisma.token.count({
-    where: { status: 'unused', deliveryEnc: { not: null }, events: { some: { type: 'sent' } } },
+    where: { status: 'unused', deliveryEnc: { not: null }, sentAt: { not: null } },
   });
 }
 
@@ -140,10 +140,23 @@ async function runInitialBatch(template: MessageTemplate): Promise<BatchResult> 
       textBody: candidateEmailText({ firstName: firstNameOf(ctx.name), positionTitles: ctx.titles, selectionUrl, template }),
     });
     if (res.ok) {
-      await logEvent(ctx.tokenId, 'sent', null, template);
+      // Authoritative, reliable marker (NOT the best-effort event) — this is what
+      // the dashboard and the "who still needs sending" query read, so a tracking
+      // failure can never re-send a delivered email or mislabel it "Not sent".
       // NB: deliveryEnc is intentionally retained (for reminders/resend) until the
       // candidate submits, at which point recordSelection purges it.
-      result.succeeded++;
+      try {
+        await prisma.token.update({
+          where: { id: ctx.tokenId },
+          data: { sentAt: new Date(), sentTemplate: template },
+        });
+        result.succeeded++;
+      } catch (err) {
+        result.failed++;
+        result.errors.push({ email: ctx.email, error: `sent but not recorded: ${(err as Error).message}` });
+      }
+      // Best-effort audit timeline entry (never blocks the send).
+      await logEvent(ctx.tokenId, 'sent', null, template);
     } else {
       await logEvent(ctx.tokenId, 'send_failed', res.error);
       result.failed++;

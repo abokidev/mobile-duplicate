@@ -12,8 +12,11 @@ export async function logEvent(
     await prisma.event.create({
       data: { tokenId, type, detail: detail ?? null, messageTemplate: messageTemplate ?? null },
     });
-  } catch {
-    // Tracking is best-effort; never let it break the candidate or send flow.
+  } catch (err) {
+    // Tracking is best-effort; never let it break the candidate or send flow. But
+    // surface it so schema drift (e.g. an unapplied migration) is diagnosable —
+    // the authoritative send status lives on the token, not on this event.
+    console.error(`[events] failed to log ${type} for token ${tokenId}:`, (err as Error).message);
   }
 }
 

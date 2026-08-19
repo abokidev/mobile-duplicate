@@ -113,6 +113,24 @@ Import and send are built for large candidate lists (1000s):
   double-click from double-sending, and the batch is idempotent — re-run it to retry
   only the candidates not yet emailed.
 
+### Deploying updates — run migrations
+
+**After every deploy, run `npx prisma migrate deploy`** (or `npm run prisma:migrate`).
+Skipping it causes silent schema drift: a real incident was a `sent`-tracking column
+missing in production, so send events failed to write and the dashboard showed
+delivered candidates as *“Not sent”*. Send status is now the authoritative
+`tokens.sent_at` marker (written on a successful send, never a swallowed best-effort
+event), so it stays correct and a tracking hiccup can never cause a re-send — but the
+column still has to exist, so **migrations must be applied**.
+
+If you upgrade a database that already sent invitations before `sent_at` existed,
+backfill it once so those people are not re-emailed:
+
+```bash
+npm run backfill:sent          # marks tokens with proof of delivery (opened/visited/submitted)
+npm run backfill:sent -- --all # also marks the rest, if a full send already went out
+```
+
 ### Security note — retained delivery token
 
 The separated upload→send flow, same-link reminders, and send retries all require the

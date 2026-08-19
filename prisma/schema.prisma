@@ -72,6 +72,14 @@ model Token {
   /// authoritative lookup path is always the salted hash above; this is never
   /// used for verification. See src/lib/crypto.ts and the Admin Upload addendum.
   deliveryEnc        String?   @map("delivery_enc") @db.Text
+  /// Authoritative "has been emailed" marker, written in the send batch. This is
+  /// the source of truth for send status and for deciding who still needs sending
+  /// — NOT the best-effort `sent` Event — so a tracking hiccup can never cause a
+  /// re-send (duplicate email) or a wrong "Not sent" on the dashboard.
+  sentAt       DateTime? @map("sent_at")
+  /// Which message template was used for the send (message_1 / message_2).
+  sentTemplate String?   @map("sent_template")
+
   /// Manual reminder bookkeeping (admin-initiated; no scheduler).
   reminderCount      Int       @default(0) @map("reminder_count")
   lastReminderSentAt DateTime? @map("last_reminder_sent_at")

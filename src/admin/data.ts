@@ -71,7 +71,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     const events = c.token?.events ?? [];
 
     const evAt = (type: string) => earliest(events.filter((e) => e.type === type).map((e) => e.occurredAt));
-    const sentAt = evAt('sent');
+    // Sent status comes from the authoritative token marker (reliable), falling
+    // back to the audit event only if the column predates a candidate's send.
+    const sentAt = c.token?.sentAt ?? evAt('sent');
     const openedAt = evAt('opened');
     const visitedAt = evAt('page_visited');
     const submittedAt = c.selection?.selectedAt ?? evAt('submitted');
