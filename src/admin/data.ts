@@ -71,7 +71,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     const events = c.token?.events ?? [];
 
     const evAt = (type: string) => earliest(events.filter((e) => e.type === type).map((e) => e.occurredAt));
-    const sentAt = evAt('sent');
+    // Sent status comes from the authoritative token marker (reliable), falling
+    // back to the audit event only if the column predates a candidate's send.
+    const sentAt = c.token?.sentAt ?? evAt('sent');
     const openedAt = evAt('opened');
     const visitedAt = evAt('page_visited');
     const submittedAt = c.selection?.selectedAt ?? evAt('submitted');
@@ -139,6 +141,26 @@ function csvCell(value: string | null | undefined): string {
 }
 
 const iso = (d: Date | null) => (d ? d.toISOString() : '');
+
+/**
+ * "Export Pending" (SMS Reminder addendum §2): candidates with no selection yet
+ * (token still unused) — the list the admin needs phone numbers for. Columns:
+ * name, email, phone, shortlisted position(s).
+ */
+export async function pendingExportCsv(): Promise<string> {
+  const candidates = await prisma.candidate.findMany({
+    where: { token: { is: { status: 'unused' } } },
+    include: { shortlist: { include: { position: true } } },
+    orderBy: { name: 'asc' },
+  });
+  const header = ['Name', 'Email', 'Phone', 'Shortlisted Positions'];
+  const lines = [header.map(csvCell).join(',')];
+  for (const c of candidates) {
+    const positions = c.shortlist.map((s) => s.position.title).sort((a, b) => a.localeCompare(b)).join('; ');
+    lines.push([csvCell(c.name), csvCell(c.email), csvCell(c.phoneNumber ?? ''), csvCell(positions)].join(','));
+  }
+  return '﻿' + lines.join('\r\n') + '\r\n';
+}
 
 /** CSV export (FR10 + addendum tracking columns). */
 export function toCsv(data: DashboardData): string {

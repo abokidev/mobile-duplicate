@@ -81,3 +81,29 @@ export function loadEmailConfig(opts: { requireToken?: boolean } = {}): EmailCon
   }
   return cfg;
 }
+
+export interface SmsConfig {
+  baseUrl: string;
+  apiKey: string;
+  senderId: string;
+}
+
+/**
+ * Load the Termii SMS configuration (SMS Reminder addendum). TERMII_API_KEY is
+ * required with no hardcoded fallback (the key lives only in the local .env).
+ */
+export function loadSmsConfig(): SmsConfig {
+  const apiKey = process.env.TERMII_API_KEY;
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error(
+      'Missing required environment variable: TERMII_API_KEY. Set it in your local .env ' +
+        '(the key is provided separately and must not be committed).'
+    );
+  }
+  return {
+    // v4 is this account's API version — do NOT use the older api.ng.termii.com host.
+    baseUrl: optional('TERMII_BASE_URL', 'https://v4.api.termii.com').replace(/\/$/, ''),
+    apiKey,
+    senderId: optional('TERMII_SENDER_ID', 'Dragnet'),
+  };
+}

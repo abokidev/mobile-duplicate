@@ -17,6 +17,7 @@
     "prisma:push": "prisma db push",
     "seed": "tsx scripts/seed.ts",
     "seed:positions": "tsx scripts/seedPositions.ts",
+    "backfill:sent": "tsx scripts/backfillSentAt.ts",
     "tokens:issue": "tsx scripts/issueTokens.ts",
     "email:send": "tsx scripts/sendEmails.ts",
     "email:preview": "tsx scripts/previewEmail.ts",

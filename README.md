@@ -107,11 +107,47 @@ Import and send are built for large candidate lists (1000s):
   then shows the usual recipient-count confirmation. Only paragraph 2 differs; the premium
   design and per-candidate title substitution are identical. Which template was used is
   recorded on each `sent` event (`events.message_template`).
+- **SMS reminders (Termii)** — the reminder flow first asks a channel: **Email** (as before)
+  or **SMS**. SMS goes only to pending candidates who have a phone number; the confirm screen
+  shows how many pending candidates are **excluded** for having no number, and warns if it's
+  within Termii's 8pm–8am WAT no-delivery window. SMS uses the same personal token link, is
+  sent one-per-recipient (the bulk endpoint can't carry per-candidate links) with rate limiting,
+  and logs `sms_sent`/`sms_failed` on the timeline. SMS copy is a **draft pending sign-off**.
+  Config: `TERMII_API_KEY` (required), `TERMII_BASE_URL` (default `https://v4.api.termii.com`),
+  `TERMII_SENDER_ID` (default `Dragnet`).
+- **Phone numbers** — `phone` is an optional column on the main upload. To add numbers to
+  existing candidates, use **Export pending** (CSV of candidates with no selection: name, email,
+  phone, positions), fill in the phone column, and re-upload via **Attach phones** — matched
+  **by email**, phone-only, with a validate-before-commit preview (other columns ignored;
+  unmatched emails reported, never created).
 - **Send / reminders** run in the **background** and the request returns immediately,
   so a batch of hundreds of ZeptoMail calls never blocks the request. Progress shows on
   the dashboard (each candidate moves to *Sent*), an in-process guard prevents a
   double-click from double-sending, and the batch is idempotent — re-run it to retry
   only the candidates not yet emailed.
+
+### Deploying updates — run migrations
+
+**After every deploy, run `npx prisma migrate deploy`** (or `npm run prisma:migrate`).
+Skipping it causes silent schema drift: a real incident was a `sent`-tracking column
+missing in production, so send events failed to write and the dashboard showed
+delivered candidates as *“Not sent”*. Send status is now the authoritative
+`tokens.sent_at` marker (written on a successful send, never a swallowed best-effort
+event), so it stays correct and a tracking hiccup can never cause a re-send — but the
+column still has to exist, so **migrations must be applied**.
+
+**Upgrading a database that already sent invitations is safe with no extra step.**
+Candidates already marked sent by the previous version (a `sent` event, no `sent_at`)
+are still recognised as sent — they are never re-emailed and still show *Sent*. Only
+newly-added candidates use the new `sent_at` marker. The backfill script below is
+**optional**, for the edge case where emails were delivered but no record was written
+at all (e.g. sent while the tracking migration was missing) and you want to reconcile
+them without re-sending:
+
+```bash
+npm run backfill:sent          # marks tokens with proof of delivery (opened/visited/submitted)
+npm run backfill:sent -- --all # also marks the rest, if a full send already went out
+```
 
 ### Security note — retained delivery token
 
