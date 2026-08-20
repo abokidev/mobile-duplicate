@@ -21,7 +21,6 @@ describe('SMS reminder confirm page (pure render)', () => {
     expect(html).toContain('Remind pending candidates by SMS?');
     expect(html).toContain('Send 1 SMS reminder(s)');
     expect(html).toContain('2 pending candidate(s) have no phone number');
-    expect(html).toContain('draft pending sign-off');
     // Back form must render as real HTML, not escaped text (regression guard).
     expect(html).toContain('action="/admin/remind/channel"');
     expect(html).not.toContain('&lt;form');

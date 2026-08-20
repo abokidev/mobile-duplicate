@@ -511,8 +511,7 @@ export function adminConfirmSendPage(opts: {
           : raw('')}
         ${opts.noDeliveryWindow
           ? raw(html`<div class="callout" style="border-left-color:#c8a13a;background:#fdf7ea"><div><p class="value">It is currently within Termii's 8pm–8am WAT window; generic-route SMS to MTN numbers may queue and deliver in the morning.</p></div></div>`)
-          : raw('')}
-        <p class="muted" style="font-size:13px">The SMS reminder copy is a draft pending sign-off.</p>`)
+          : raw('')}`)
     : raw('');
   const backForm = isRemind
     ? html`<form method="POST" action="/admin/remind/channel" style="margin-top:12px"><button class="btn btn-ghost">Back</button></form>`
