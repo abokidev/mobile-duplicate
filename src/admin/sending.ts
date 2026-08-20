@@ -1,7 +1,9 @@
 import { prisma } from '../lib/db.js';
-import { env, loadEmailConfig } from '../lib/env.js';
+import { env, loadEmailConfig, loadSmsConfig } from '../lib/env.js';
 import { decryptDeliveryToken } from '../lib/crypto.js';
 import { sendViaZeptoMail } from '../lib/zeptomail.js';
+import { sendViaTermii } from '../lib/termii.js';
+import { smsReminderText } from '../lib/smsReminder.js';
 import { logEvent } from './events.js';
 import {
   candidateEmailHtml,
@@ -19,6 +21,7 @@ export interface SendContext {
   tokenId: number;
   name: string;
   email: string;
+  phone: string | null;
   raw: string;
   titles: string[];
 }
@@ -70,7 +73,7 @@ function toContexts(
   tokens: {
     id: number;
     deliveryEnc: string | null;
-    candidate: { name: string; email: string; shortlist: { position: { title: string } }[] };
+    candidate: { name: string; email: string; phoneNumber: string | null; shortlist: { position: { title: string } }[] };
   }[]
 ): SendContext[] {
   const out: SendContext[] = [];
@@ -78,10 +81,12 @@ function toContexts(
     if (!t.deliveryEnc) continue;
     const raw = decryptDeliveryToken(t.deliveryEnc);
     if (!raw) continue; // cannot rebuild the link; skip (surfaced as failure count)
+    const phone = t.candidate.phoneNumber && t.candidate.phoneNumber.trim() !== '' ? t.candidate.phoneNumber : null;
     out.push({
       tokenId: t.id,
       name: t.candidate.name,
       email: t.candidate.email,
+      phone,
       raw,
       titles: t.candidate.shortlist.map((s) => s.position.title).sort((a, b) => a.localeCompare(b)),
     });
@@ -173,12 +178,38 @@ async function runInitialBatch(template: MessageTemplate): Promise<BatchResult> 
   return result;
 }
 
-/** Reminder batch (Admin Upload addendum §3). */
-export async function sendReminderBatch(): Promise<BatchResult> {
+export type ReminderChannel = 'email' | 'sms';
+
+/** Pending reminders that have a phone number on file (SMS-eligible). */
+export async function countReminderPendingWithPhone(): Promise<number> {
+  return prisma.token.count({
+    where: {
+      status: 'unused',
+      deliveryEnc: { not: null },
+      ...ALREADY_SENT,
+      candidate: { phoneNumber: { not: null } },
+    },
+  });
+}
+
+/** Pending reminders with NO phone number (excluded from an SMS send). */
+export async function countReminderPendingNoPhone(): Promise<number> {
+  return prisma.token.count({
+    where: {
+      status: 'unused',
+      deliveryEnc: { not: null },
+      ...ALREADY_SENT,
+      candidate: { phoneNumber: null },
+    },
+  });
+}
+
+/** Reminder batch — Email (existing) or SMS (SMS Reminder addendum §4). */
+export async function sendReminderBatch(channel: ReminderChannel = 'email'): Promise<BatchResult> {
   if (reminderRunning) return { attempted: 0, succeeded: 0, failed: 0, errors: [] };
   reminderRunning = true;
   try {
-    return await runReminderBatch();
+    return channel === 'sms' ? await runSmsReminderBatch() : await runReminderBatch();
   } finally {
     reminderRunning = false;
   }
@@ -208,6 +239,34 @@ async function runReminderBatch(): Promise<BatchResult> {
       result.failed++;
       result.errors.push({ email: ctx.email, error: res.error });
     }
+  }
+  return result;
+}
+
+async function runSmsReminderBatch(): Promise<BatchResult> {
+  const cfg = loadSmsConfig();
+  // Only candidates who are pending AND have a phone number.
+  const pending = (await loadReminderPending()).filter((c) => c.phone);
+  const result: BatchResult = { attempted: pending.length, succeeded: 0, failed: 0, errors: [] };
+
+  for (const ctx of pending) {
+    const { selectionUrl } = urlsFor(ctx.raw);
+    const res = await sendViaTermii(cfg, { to: ctx.phone!, message: smsReminderText(selectionUrl) });
+    if (res.ok) {
+      await prisma.token.update({
+        where: { id: ctx.tokenId },
+        data: { reminderCount: { increment: 1 }, lastReminderSentAt: new Date() },
+      });
+      await logEvent(ctx.tokenId, 'sms_sent');
+      result.succeeded++;
+    } else {
+      await logEvent(ctx.tokenId, 'sms_failed', res.error);
+      result.failed++;
+      result.errors.push({ email: ctx.email, error: res.error });
+    }
+    // Gentle rate limit for the per-recipient loop (bulk endpoint can't carry
+    // per-candidate links). ~10/sec.
+    await new Promise((r) => setTimeout(r, 100));
   }
   return result;
 }

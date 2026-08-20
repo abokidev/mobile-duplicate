@@ -1,12 +1,14 @@
 import { prisma } from '../lib/db.js';
 import { generateRawToken, hashToken } from '../lib/token.js';
 import { encryptDeliveryToken } from '../lib/crypto.js';
+import { normalizePhone } from '../lib/termii.js';
 
 /**
  * Admin CSV upload → validation → commit (Admin Upload addendum §1).
  *
  * CSV columns: name, email, positions (positions = semicolon-separated titles that
- * must exactly match the seeded position titles). Validation runs BEFORE any write;
+ * must exactly match the seeded position titles), plus an OPTIONAL `phone` column
+ * (SMS Reminder addendum §3 recommendation). Validation runs BEFORE any write;
  * nothing is committed until the admin confirms. Bad rows are reported with reasons
  * and never block the good rows.
  */
@@ -18,6 +20,7 @@ export interface ParsedRow {
   name: string;
   email: string;
   positions: string[];
+  phoneRaw?: string;
 }
 
 export interface GoodRow extends ParsedRow {
@@ -114,7 +117,7 @@ export function validateRows(
       continue;
     }
 
-    good.push({ rowNumber: r.rowNumber, name: r.name.trim(), email, positions: distinct, multi: distinct.length > 1 });
+    good.push({ rowNumber: r.rowNumber, name: r.name.trim(), email, positions: distinct, multi: distinct.length > 1, phoneRaw: r.phoneRaw });
   }
 
   return {
@@ -133,6 +136,7 @@ export function rowsFromCsv(text: string): ParsedRow[] {
     name: header.indexOf('name'),
     email: header.indexOf('email'),
     positions: header.indexOf('positions'),
+    phone: header.indexOf('phone') >= 0 ? header.indexOf('phone') : header.indexOf('phone_number'),
   };
   if (idx.email < 0 || idx.positions < 0) {
     throw new Error('CSV must have columns: name, email, positions');
@@ -147,6 +151,7 @@ export function rowsFromCsv(text: string): ParsedRow[] {
         .split(';')
         .map((s) => s.trim())
         .filter(Boolean),
+      phoneRaw: idx.phone >= 0 ? (r[idx.phone] ?? '').trim() : undefined,
     }));
 }
 
@@ -210,7 +215,11 @@ export async function commitImport(text: string): Promise<CommitResult> {
         if (fresh.length === 0) return;
 
         await tx.candidate.createMany({
-          data: fresh.map((r) => ({ name: r.name, email: r.email })),
+          data: fresh.map((r) => ({
+            name: r.name,
+            email: r.email,
+            phoneNumber: r.phoneRaw ? normalizePhone(r.phoneRaw) : null,
+          })),
           skipDuplicates: true,
         });
         const created = await tx.candidate.findMany({

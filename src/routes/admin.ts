@@ -9,28 +9,37 @@ import {
   verifyPassword,
   type AdminIdentity,
 } from '../admin/auth.js';
-import { getDashboardData, toCsv } from '../admin/data.js';
+import { getDashboardData, pendingExportCsv, toCsv } from '../admin/data.js';
 import {
   adminBatchStartedPage,
+  adminChooseChannelPage,
   adminChooseTemplatePage,
   adminConfirmSendPage,
   adminDashboardPage,
   adminImportResultPage,
   adminLoginPage,
+  adminPhonesPreviewPage,
+  adminPhonesResultPage,
+  adminPhonesUploadPage,
   adminPreviewPage,
   adminUploadPage,
 } from '../admin/pages.js';
 import type { MessageTemplate } from '../lib/email.js';
 import { commitImport, errorReportCsv, validateCsv } from '../admin/import.js';
+import { commitPhoneUpdate, phoneErrorReportCsv, validatePhoneCsv } from '../admin/phones.js';
 import { POSITION_TITLES } from '../lib/positions.js';
-import { loadEmailConfig } from '../lib/env.js';
+import { loadEmailConfig, loadSmsConfig } from '../lib/env.js';
+import { inNoDeliveryWindowWAT } from '../lib/termii.js';
 import {
   countInitialPending,
   countReminderPending,
+  countReminderPendingNoPhone,
+  countReminderPendingWithPhone,
   isReminderRunning,
   isSendRunning,
   sendInitialBatch,
   sendReminderBatch,
+  type ReminderChannel,
 } from '../admin/sending.js';
 
 function sendHtml(reply: FastifyReply, statusCode: number, body: string) {
@@ -172,6 +181,67 @@ export async function adminRoutes(app: FastifyInstance) {
       .send(errorReportCsv(result));
   });
 
+  // ── Export pending (SMS Reminder addendum §2) ────────────────────────────────
+  app.get('/admin/export-pending.csv', async (req, reply) => {
+    const admin = await requireAdmin(req, reply);
+    if (!admin) return;
+    reply
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', 'attachment; filename="pending-candidates.csv"')
+      .header('cache-control', 'no-store, private')
+      .send(await pendingExportCsv());
+  });
+
+  // ── Attach phone numbers (SMS Reminder addendum §3) ──────────────────────────
+  app.get('/admin/phones', async (req, reply) => {
+    const admin = await requireAdmin(req, reply);
+    if (!admin) return;
+    return sendHtml(reply, 200, adminPhonesUploadPage());
+  });
+
+  app.post('/admin/phones/preview', async (req, reply) => {
+    const admin = await requireAdmin(req, reply);
+    if (!admin) return;
+    let text = '';
+    try {
+      const file = await (req as unknown as { file: () => Promise<{ toBuffer: () => Promise<Buffer> } | undefined> }).file();
+      if (!file) return sendHtml(reply, 400, adminPhonesUploadPage({ error: 'No file was uploaded.' }));
+      text = (await file.toBuffer()).toString('utf8');
+    } catch {
+      return sendHtml(reply, 400, adminPhonesUploadPage({ error: 'Could not read the uploaded file.' }));
+    }
+    try {
+      const result = await validatePhoneCsv(text);
+      return sendHtml(reply, 200, adminPhonesPreviewPage(result, text));
+    } catch (err) {
+      return sendHtml(reply, 400, adminPhonesUploadPage({ error: (err as Error).message }));
+    }
+  });
+
+  app.post('/admin/phones/commit', async (req, reply) => {
+    const admin = await requireAdmin(req, reply);
+    if (!admin) return;
+    const text = csvFromBody(req.body);
+    if (!text) return sendHtml(reply, 400, adminPhonesUploadPage({ error: 'Nothing to update.' }));
+    try {
+      const res = await commitPhoneUpdate(text);
+      return sendHtml(reply, 200, adminPhonesResultPage(res));
+    } catch (err) {
+      return sendHtml(reply, 400, adminPhonesUploadPage({ error: (err as Error).message }));
+    }
+  });
+
+  app.post('/admin/phones/errors', async (req, reply) => {
+    const admin = await requireAdmin(req, reply);
+    if (!admin) return;
+    const result = await validatePhoneCsv(csvFromBody(req.body));
+    reply
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', 'attachment; filename="phone-update-errors.csv"')
+      .header('cache-control', 'no-store, private')
+      .send(phoneErrorReportCsv(result));
+  });
+
   // ── Send invitations ────────────────────────────────────────────────────────
   const parseTemplate = (body: unknown): MessageTemplate => {
     const v = (body as Record<string, unknown> | null)?.template;
@@ -217,25 +287,61 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 
   // ── Reminders ────────────────────────────────────────────────────────────────
+  const parseChannel = (body: unknown): ReminderChannel => {
+    const v = (body as Record<string, unknown> | null)?.channel;
+    return v === 'sms' ? 'sms' : 'email';
+  };
+
+  // Step 1: choose channel (SMS Reminder addendum §4).
+  app.post('/admin/remind/channel', async (req, reply) => {
+    const admin = await requireAdmin(req, reply);
+    if (!admin) return;
+    return sendHtml(reply, 200, adminChooseChannelPage());
+  });
+
+  // Step 2: confirmation for the chosen channel.
   app.post('/admin/remind/preview', async (req, reply) => {
     const admin = await requireAdmin(req, reply);
     if (!admin) return;
+    const channel = parseChannel(req.body);
+    if (channel === 'sms') {
+      const count = await countReminderPendingWithPhone();
+      const smsNoPhone = await countReminderPendingNoPhone();
+      return sendHtml(
+        reply,
+        200,
+        adminConfirmSendPage({
+          kind: 'remind',
+          count,
+          action: '/admin/remind',
+          channel: 'sms',
+          smsNoPhone,
+          noDeliveryWindow: inNoDeliveryWindowWAT(),
+        })
+      );
+    }
     const count = await countReminderPending();
-    return sendHtml(reply, 200, adminConfirmSendPage({ kind: 'remind', count, action: '/admin/remind' }));
+    return sendHtml(reply, 200, adminConfirmSendPage({ kind: 'remind', count, action: '/admin/remind', channel: 'email' }));
   });
 
   app.post('/admin/remind', async (req, reply) => {
     const admin = await requireAdmin(req, reply);
     if (!admin) return;
+    const channel = parseChannel(req.body);
     try {
-      loadEmailConfig({ requireToken: true });
+      if (channel === 'sms') loadSmsConfig();
+      else loadEmailConfig({ requireToken: true });
     } catch (err) {
       return sendHtml(reply, 200, adminUploadPage({ error: `Reminder send failed: ${(err as Error).message}` }));
     }
     const alreadyRunning = isReminderRunning();
-    const count = alreadyRunning ? 0 : await countReminderPending();
+    const count = alreadyRunning
+      ? 0
+      : channel === 'sms'
+        ? await countReminderPendingWithPhone()
+        : await countReminderPending();
     if (!alreadyRunning) {
-      void sendReminderBatch().catch((err) => app.log.error({ err }, 'reminder batch failed'));
+      void sendReminderBatch(channel).catch((err) => app.log.error({ err }, 'reminder batch failed'));
     }
     return sendHtml(reply, 200, adminBatchStartedPage('remind', count, alreadyRunning));
   });

@@ -13,10 +13,13 @@ datasource db {
 
 /// Multi-shortlisted candidates reached only via an emailed tokenised link.
 model Candidate {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String   @unique
+  /// Optional — for SMS reminders (Termii). Populated via the main upload's
+  /// optional `phone` column or the separate phone re-upload.
+  phoneNumber String?  @map("phone_number")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   shortlist Shortlist[]
   token     Token?
@@ -93,6 +96,8 @@ model Token {
 enum EventType {
   sent
   send_failed
+  sms_sent
+  sms_failed
   opened
   page_visited
   submitted

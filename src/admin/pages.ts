@@ -136,7 +136,9 @@ export function adminDashboardPage(
         </div>
         <div class="btns">
           <a class="btn btn-ghost small" href="/admin/upload">Upload candidates</a>
+          <a class="btn btn-ghost small" href="/admin/phones">Attach phones</a>
           <a class="btn btn-ghost small" href="/admin/export.csv">Export CSV</a>
+          <a class="btn btn-ghost small" href="/admin/export-pending.csv">Export pending</a>
           <form method="POST" action="/admin/logout" style="margin:0"><button class="btn btn-ghost small">Sign out</button></form>
         </div>
       </div>
@@ -152,8 +154,8 @@ export function adminDashboardPage(
         </div>
         <div class="actioncard">
           <h3>Send reminders</h3>
-          <p>${c.pending - c.notSent - c.sendFailed} emailed candidate(s) still pending.</p>
-          <form method="POST" action="/admin/remind/preview" style="margin:0"><button class="btn btn-ghost small">Send reminders…</button></form>
+          <p>${c.pending - c.notSent - c.sendFailed} emailed candidate(s) still pending. Choose Email or SMS next.</p>
+          <form method="POST" action="/admin/remind/channel" style="margin:0"><button class="btn btn-ghost small">Send reminders…</button></form>
         </div>
       </div>
 
@@ -329,6 +331,91 @@ export function adminImportResultPage(res: {
   return layout({ title: 'Import complete · Admin', bodyHtml: body });
 }
 
+export function adminPhonesUploadPage(opts: { error?: string } = {}): string {
+  const err = opts.error
+    ? raw(html`<div class="callout" role="alert" style="border-left-color:var(--red)"><div><p class="value">${opts.error}</p></div></div>`)
+    : raw('');
+  const body = html`
+    <div class="card" style="max-width:40rem;margin:0 auto">
+      <p class="eyebrow">Admin · Attach phone numbers</p>
+      <h1>Upload phone numbers</h1>
+      <p class="lede muted">
+        A CSV with <code>email</code> and <code>phone</code> columns. Rows are matched to existing
+        candidates <strong>by email</strong> and only the phone number is attached — any other
+        columns (name, positions) are ignored. This does not create candidates.
+      </p>
+      ${err}
+      <div class="callout" style="border-left-color:#3a557e;background:#f4f6fa">
+        <div>
+          <p class="label" style="color:#3a557e">Tip</p>
+          <p class="value" style="font-family:var(--font-body);font-weight:400;font-size:14px">Use “Export pending” on the dashboard to get the list of candidates who still need a phone number.</p>
+        </div>
+      </div>
+      <form method="POST" action="/admin/phones/preview" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".csv,text/csv" required
+               style="width:100%;padding:16px;border:1.5px dashed var(--line);border-radius:10px;background:#fbfaf8;margin:6px 0 20px" />
+        <button type="submit" class="btn btn-primary">Validate &amp; preview</button>
+      </form>
+      <div style="margin-top:20px"><a class="btn btn-ghost" href="/admin">Back to dashboard</a></div>
+    </div>
+  `;
+  return layout({ title: 'Attach phone numbers · Admin', bodyHtml: body });
+}
+
+export function adminPhonesPreviewPage(
+  result: { totalRows: number; matched: unknown[]; bad: { rowNumber: number; email: string; phoneRaw: string; reason: string }[] },
+  csvText: string
+): string {
+  const errorRows = result.bad
+    .map(
+      (b) => html`<tr><td>${b.rowNumber}</td><td>${b.email || raw('<span class="muted">—</span>')}</td><td>${b.phoneRaw}</td><td style="color:var(--red-deep)">${b.reason}</td></tr>`
+    )
+    .join('');
+  const body = html`
+    <div style="max-width:52rem;margin:0 auto;width:100%">
+      <p class="eyebrow">Admin · Phone update preview</p>
+      <h1 style="margin-bottom:6px">Review before attaching</h1>
+      <p class="muted" style="margin-bottom:22px">Nothing has been written yet. Confirm below to attach these phone numbers.</p>
+      <div class="stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px">
+        ${raw(statCard('Rows in file', result.totalRows))}
+        ${raw(statCard('Phone numbers to attach', result.matched.length, 'stat-accent'))}
+        ${raw(statCard('Rows with no match / error', result.bad.length, result.bad.length ? 'stat-warn' : ''))}
+      </div>
+      <div class="card">
+        <p style="margin:0 0 4px"><strong>${result.matched.length}</strong> phone number(s) will be attached to existing candidates by email.</p>
+        <form method="POST" action="/admin/phones/commit" style="margin-top:16px">
+          <input type="hidden" name="csv" value="${esc(csvText)}" />
+          <button type="submit" class="btn btn-primary"${result.matched.length === 0 ? ' disabled aria-disabled="true"' : ''}>Confirm — attach ${result.matched.length} phone number(s)</button>
+        </form>
+        <div style="margin-top:12px"><a class="btn btn-ghost" href="/admin/phones">Cancel / re-upload</a></div>
+      </div>
+      ${result.bad.length
+        ? raw(html`
+          <h2 style="font-size:18px;margin:26px 0 10px">Rows not attached</h2>
+          <div class="table-scroll"><table class="dash-table"><thead><tr><th>Row</th><th>Email</th><th>Phone</th><th>Reason</th></tr></thead><tbody>${raw(errorRows)}</tbody></table></div>`)
+        : raw('')}
+    </div>
+    ${raw(DASH_STYLE)}
+  `;
+  return layout({ title: 'Phone update preview · Admin', bodyHtml: body });
+}
+
+export function adminPhonesResultPage(res: { updated: number; unmatched: number }): string {
+  const body = html`
+    <div class="card" style="max-width:36rem;margin:0 auto">
+      <div class="success-mark">${raw('<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>')}</div>
+      <p class="eyebrow">Phone update complete</p>
+      <h1>Phone numbers attached</h1>
+      <div class="summary" style="margin-top:14px">
+        <div class="row"><div class="k">Phone numbers attached</div><div class="v">${res.updated}</div></div>
+        <div class="row"><div class="k">Rows not attached (no match / error)</div><div class="v">${res.unmatched}</div></div>
+      </div>
+      <div class="actions"><a class="btn btn-primary" href="/admin">Back to dashboard</a></div>
+    </div>
+  `;
+  return layout({ title: 'Phone update complete · Admin', bodyHtml: body });
+}
+
 /**
  * Template-choice step shown before the send confirmation (Message Template
  * Choice addendum): pick Message 1 or Message 2 for this batch of invitations.
@@ -352,6 +439,12 @@ export function adminChooseTemplatePage(): string {
       ${raw(option('message_2', 'Message 2', 'For candidates who applied under more than one email address.'))}
       <form method="GET" action="/admin" style="margin-top:6px"><button class="btn btn-ghost">Cancel</button></form>
     </div>
+    ${raw(PICKER_STYLE)}
+  `;
+  return layout({ title: 'Choose message · Admin', bodyHtml: body });
+}
+
+const PICKER_STYLE = `
     <style>
       .pick { display:flex; align-items:center; gap:14px; width:100%; text-align:left; cursor:pointer;
         background:var(--surface); border:1.5px solid var(--line); border-radius:12px; padding:18px 20px;
@@ -360,9 +453,31 @@ export function adminChooseTemplatePage(): string {
       .pick-title { font-family:var(--font-head); font-weight:700; font-size:17px; color:var(--black); }
       .pick-blurb { color:var(--muted); font-size:14px; flex:1; }
       .pick-arrow { color:var(--red); font-family:var(--font-head); font-weight:700; font-size:18px; }
-    </style>
+    </style>`;
+
+/** Reminder channel choice (SMS Reminder addendum §4): Email or SMS. */
+export function adminChooseChannelPage(): string {
+  const option = (value: string, label: string, blurb: string) => html`
+    <form method="POST" action="/admin/remind/preview" style="margin:0 0 12px">
+      <input type="hidden" name="channel" value="${value}" />
+      <button type="submit" class="pick">
+        <span class="pick-title">${label}</span>
+        <span class="pick-blurb">${blurb}</span>
+        <span class="pick-arrow" aria-hidden="true">→</span>
+      </button>
+    </form>`;
+  const body = html`
+    <div class="card" style="max-width:36rem;margin:0 auto">
+      <p class="eyebrow">Send reminders · Step 1 of 2</p>
+      <h1>How do you want to remind pending candidates?</h1>
+      <p class="lede muted">Choose a channel. You’ll confirm the recipient count next.</p>
+      ${raw(option('email', 'Email', 'The approved reminder email, to everyone still pending.'))}
+      ${raw(option('sms', 'SMS', 'A short SMS via Termii — only to pending candidates who have a phone number.'))}
+      <form method="GET" action="/admin" style="margin-top:6px"><button class="btn btn-ghost">Cancel</button></form>
+    </div>
+    ${raw(PICKER_STYLE)}
   `;
-  return layout({ title: 'Choose message · Admin', bodyHtml: body });
+  return layout({ title: 'Choose reminder channel · Admin', bodyHtml: body });
 }
 
 const TEMPLATE_LABEL: Record<string, string> = { message_1: 'Message 1', message_2: 'Message 2' };
@@ -372,31 +487,53 @@ export function adminConfirmSendPage(opts: {
   count: number;
   action: string;
   template?: string;
+  channel?: 'email' | 'sms';
+  smsNoPhone?: number;
+  noDeliveryWindow?: boolean;
 }): string {
   const isRemind = opts.kind === 'remind';
+  const isSms = opts.channel === 'sms';
+  const verb = isSms ? 'SMS' : 'email';
   const templateHidden = opts.template
     ? raw(html`<input type="hidden" name="template" value="${esc(opts.template)}" />`)
+    : raw('');
+  const channelHidden = opts.channel
+    ? raw(html`<input type="hidden" name="channel" value="${esc(opts.channel)}" />`)
     : raw('');
   const templateNote =
     !isRemind && opts.template
       ? raw(html`<p class="muted" style="font-size:14px">Using <strong>${TEMPLATE_LABEL[opts.template] ?? opts.template}</strong>.</p>`)
       : raw('');
+  const smsNotes = isSms
+    ? raw(html`
+        ${opts.smsNoPhone && opts.smsNoPhone > 0
+          ? raw(html`<div class="callout" style="border-left-color:#3a557e;background:#f4f6fa"><div><p class="value" style="font-weight:600">${opts.smsNoPhone} pending candidate(s) have no phone number on file and are excluded from this SMS send.</p></div></div>`)
+          : raw('')}
+        ${opts.noDeliveryWindow
+          ? raw(html`<div class="callout" style="border-left-color:#c8a13a;background:#fdf7ea"><div><p class="value">It is currently within Termii's 8pm–8am WAT window; generic-route SMS to MTN numbers may queue and deliver in the morning.</p></div></div>`)
+          : raw('')}
+        <p class="muted" style="font-size:13px">The SMS reminder copy is a draft pending sign-off.</p>`)
+    : raw('');
+  const backForm = isRemind
+    ? html`<form method="POST" action="/admin/remind/channel" style="margin-top:12px"><button class="btn btn-ghost">Back</button></form>`
+    : html`<form method="POST" action="/admin/send/choose" style="margin-top:12px"><button class="btn btn-ghost">Back</button></form>`;
   const body = html`
     <div class="card" style="max-width:34rem;margin:0 auto">
-      <p class="eyebrow">${isRemind ? 'Send reminders' : 'Send invitations · Step 2 of 2'}</p>
-      <h1>${isRemind ? 'Remind pending candidates?' : 'Send invitation emails?'}</h1>
+      <p class="eyebrow">${isRemind ? 'Send reminders · Step 2 of 2' : 'Send invitations · Step 2 of 2'}</p>
+      <h1>${isRemind ? `Remind pending candidates by ${verb}?` : 'Send invitation emails?'}</h1>
       <p class="lede">
-        This will email <strong>${opts.count}</strong> candidate(s)${isRemind ? ' who have not yet responded' : ' awaiting their first invitation'}.
+        This will ${verb} <strong>${opts.count}</strong> candidate(s)${isRemind ? ' who have not yet responded' : ' awaiting their first invitation'}${isSms ? ' and have a phone number' : ''}.
       </p>
       ${templateNote}
+      ${smsNotes}
       ${opts.count === 0
-        ? raw(html`<p class="muted">There is no one to email right now.</p><div class="actions"><a class="btn btn-ghost" href="/admin">Back to dashboard</a></div>`)
+        ? raw(html`<p class="muted">There is no one to ${verb} right now.</p><div class="actions"><a class="btn btn-ghost" href="/admin">Back to dashboard</a></div>`)
         : raw(html`
           <form method="POST" action="${esc(opts.action)}" class="actions" data-final-form>
-            ${templateHidden}
-            <button type="submit" class="btn btn-primary">${isRemind ? `Send ${opts.count} reminder(s)` : `Send ${opts.count} invitation(s)`}</button>
+            ${templateHidden}${channelHidden}
+            <button type="submit" class="btn btn-primary">${isRemind ? `Send ${opts.count} ${verb} reminder(s)` : `Send ${opts.count} invitation(s)`}</button>
           </form>
-          <form method="${isRemind ? 'GET' : 'POST'}" action="${isRemind ? '/admin' : '/admin/send/choose'}" style="margin-top:12px"><button class="btn btn-ghost">${isRemind ? 'Cancel' : 'Back'}</button></form>`)}
+          ${raw(backForm)}`)}
     </div>
   `;
   return layout({ title: isRemind ? 'Confirm reminders · Admin' : 'Confirm send · Admin', bodyHtml: body, withScript: true });
@@ -411,9 +548,9 @@ export function adminBatchStartedPage(kind: 'send' | 'remind', count: number, al
       <h1>${alreadyRunning ? 'A batch is already sending' : `Sending ${count} ${noun}(s)…`}</h1>
       <p class="lede">
         ${alreadyRunning
-          ? raw('A send is already in progress. Emails are going out in the background — no need to start another.')
-          : raw('Emails are being sent in the background so this page never times out on large lists.')}
-        Refresh the dashboard to watch progress as each candidate moves to <strong>Sent</strong>.
+          ? raw('A send is already in progress. Messages are going out in the background — no need to start another.')
+          : raw('Messages are being sent in the background so this page never times out on large lists.')}
+        Refresh the dashboard to watch progress.
       </p>
       <p class="muted" style="font-size:14px">
         If any sends fail, they are marked on the dashboard and you can safely run

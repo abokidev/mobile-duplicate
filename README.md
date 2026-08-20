@@ -107,6 +107,19 @@ Import and send are built for large candidate lists (1000s):
   then shows the usual recipient-count confirmation. Only paragraph 2 differs; the premium
   design and per-candidate title substitution are identical. Which template was used is
   recorded on each `sent` event (`events.message_template`).
+- **SMS reminders (Termii)** — the reminder flow first asks a channel: **Email** (as before)
+  or **SMS**. SMS goes only to pending candidates who have a phone number; the confirm screen
+  shows how many pending candidates are **excluded** for having no number, and warns if it's
+  within Termii's 8pm–8am WAT no-delivery window. SMS uses the same personal token link, is
+  sent one-per-recipient (the bulk endpoint can't carry per-candidate links) with rate limiting,
+  and logs `sms_sent`/`sms_failed` on the timeline. SMS copy is a **draft pending sign-off**.
+  Config: `TERMII_API_KEY` (required), `TERMII_BASE_URL` (default `https://v4.api.termii.com`),
+  `TERMII_SENDER_ID` (default `Dragnet`).
+- **Phone numbers** — `phone` is an optional column on the main upload. To add numbers to
+  existing candidates, use **Export pending** (CSV of candidates with no selection: name, email,
+  phone, positions), fill in the phone column, and re-upload via **Attach phones** — matched
+  **by email**, phone-only, with a validate-before-commit preview (other columns ignored;
+  unmatched emails reported, never created).
 - **Send / reminders** run in the **background** and the request returns immediately,
   so a batch of hundreds of ZeptoMail calls never blocks the request. Progress shows on
   the dashboard (each candidate moves to *Sent*), an in-process guard prevents a
