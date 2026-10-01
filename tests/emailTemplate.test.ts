@@ -33,7 +33,7 @@ describe('invitation message templates', () => {
       expect(html).toContain('Process Technician and Electrical Specialist');
       expect(html).toContain('Once you confirm your choice, it cannot be changed.');
       expect(html).toContain('remotely monitored'); // N.B. paragraph
-      expect(html).toContain('4pm WAT on Thursday, 20th August 2026');
+      expect(html).toContain('8am WAT on Saturday, 3rd October 2026');
       expect(html).toContain('Best regards');
     }
     // Subject pattern is identical for both templates.

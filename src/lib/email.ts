@@ -11,8 +11,8 @@ import { esc } from './html.js';
  *   - the greeting: "Dear {FirstName}," (personalised),
  *   - the shortlisted position titles inserted into paragraph 1 and the subject.
  *
- * Dates inside the copy ("Saturday, 29th August 2026", "4pm WAT on Thursday, 20th
- * August 2026") are part of the approved wording and are intentionally literal here,
+ * Dates inside the copy ("Saturday, 29th August 2026", "8am WAT on Saturday, 3rd
+ * October 2026") are part of the approved wording and are intentionally literal here,
  * not pulled from config. (The instructions PAGE keeps its own copy via env.)
  */
 
@@ -190,7 +190,7 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
                 <tr>
                   <td style="padding:14px 18px;font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:1.6;color:#242424;">
                     Please note that the deadline for submission is
-                    <strong style="color:#141414;">4pm WAT on Thursday, 20th August 2026</strong>. No changes
+                    <strong style="color:#141414;">8am WAT on Saturday, 3rd October 2026</strong>. No changes
                     to a candidate's preferred position will be accommodated after this date and time.
                   </td>
                 </tr>
@@ -254,7 +254,7 @@ export function candidateEmailText(input: CandidateEmailInput): string {
     ``,
     `N.B: The testing session will be conducted online, requiring a camera and microphone-enabled PC with a stable network connection. The session will also be remotely monitored, and there will be an audio-visual recording. Therefore, it is important to dress professionally during the session.`,
     ``,
-    `Please note that the deadline for submission is 4pm WAT on Thursday, 20th August 2026. No changes to a candidate's preferred position will be accommodated after this date and time.`,
+    `Please note that the deadline for submission is 8am WAT on Saturday, 3rd October 2026. No changes to a candidate's preferred position will be accommodated after this date and time.`,
     ``,
     `Best regards,`,
     `Dragnet Solutions Limited`,

@@ -62,7 +62,7 @@ Per **`DEADLINE_ADDENDUM.md`**, which overrides PSA **FR5**:
 - **The link has no expiry.** A token stays valid — unused, live, clickable — until a
   candidate actually submits. There is **no wall-clock deadline cutoff** anywhere in
   code.
-- **The deadline (4:00 PM WAT, Thu 20 Aug 2026) is copy only.** It appears in the email
+- **The deadline (8:00 AM WAT, Sat 3 Oct 2026) is copy only.** It appears in the email
   and on the instructions page to create urgency. Moving it is a **text change**
   (`DEADLINE_DISPLAY` in `.env`) — no code, config, or re-issue of already-sent links.
 - The only token states are **`unused`** and **`used`** — there is no `expired` state,
