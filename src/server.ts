@@ -1,4 +1,4 @@
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
@@ -11,8 +11,6 @@ import { prisma } from './lib/db.js';
 import { candidateRoutes } from './routes/candidate.js';
 import { adminRoutes } from './routes/admin.js';
 import { genericMessagePage } from './pages/candidate.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function buildServer() {
   const app = Fastify({
@@ -54,7 +52,7 @@ export async function buildServer() {
   await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024, files: 1 } });
 
   await app.register(fastifyStatic, {
-    root: join(__dirname, '..', 'public'),
+    root: join(process.cwd(), 'public'),
     prefix: '/assets/',
     cacheControl: true,
     maxAge: '1h',

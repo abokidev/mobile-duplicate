@@ -31,6 +31,7 @@ describe('invitation message templates', () => {
       expect(html).toContain('Dear Adaeze,');
       expect(html).toContain('for the following positions:');
       expect(html).toContain('Process Technician and Electrical Specialist');
+      expect(html).toContain('Kindly disregard the previously communicated date');
       expect(html).toContain('Once you confirm your choice, it cannot be changed.');
       expect(html).toContain('remotely monitored'); // N.B. paragraph
       expect(html).toContain('8am WAT on Saturday, 3rd October 2026');

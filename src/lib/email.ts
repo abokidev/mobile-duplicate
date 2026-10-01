@@ -145,6 +145,9 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
                 as part of the selection process.
               </p>
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
+                Kindly disregard the previously communicated date, as it contained an incorrect date.
+              </p>
+              <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
                 ${para2}
               </p>
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 20px 0;">
@@ -245,6 +248,8 @@ export function candidateEmailText(input: CandidateEmailInput): string {
     `Dear ${input.firstName},`,
     ``,
     `Further to your application to ExxonMobil Affiliates in Nigeria for the following positions: ${titles}, you have been shortlisted to complete an online computer-based aptitude and skills test on Saturday, 3rd October 2026 as part of the selection process.`,
+    ``,
+    `Kindly disregard the previously communicated date, as it contained an incorrect date.`,
     ``,
     para2For(input.template),
     ``,

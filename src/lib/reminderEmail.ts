@@ -86,6 +86,9 @@ export function reminderEmailHtml(input: ReminderEmailInput): string {
                 Our records show you have not yet indicated your preferred position for the following:
                 <strong style="color:#141414;">${titles}</strong>. This is a reminder to do so before the deadline.
               </p>
+              <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
+                Kindly disregard the previously communicated date, as it contained an incorrect date.
+              </p>
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 20px 0;">
                 Please use your personal link below to make your selection. It only takes a moment, and your
                 choice can be submitted once. Once you confirm your choice, it cannot be changed.
@@ -149,6 +152,8 @@ export function reminderEmailText(input: ReminderEmailInput): string {
     `Dear ${input.firstName},`,
     ``,
     `Our records show you have not yet indicated your preferred position for the following: ${titles}. This is a reminder to do so before the deadline.`,
+    ``,
+    `Kindly disregard the previously communicated date, as it contained an incorrect date.`,
     ``,
     `Please use your personal link below to make your selection. It only takes a moment, and your choice can be submitted once. Once you confirm your choice, it cannot be changed.`,
     ``,
