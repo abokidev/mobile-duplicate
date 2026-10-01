@@ -1,3 +1,4 @@
+import { DEADLINE_EMAIL_COPY, TEST_DATE_COPY } from './campaignCopy.js';
 import { esc } from './html.js';
 
 /**
@@ -11,8 +12,8 @@ import { esc } from './html.js';
  *   - the greeting: "Dear {FirstName}," (personalised),
  *   - the shortlisted position titles inserted into paragraph 1 and the subject.
  *
- * Dates inside the copy ("Saturday, 10th October 2026", "8am WAT on Saturday, 3rd
- * October 2026") are part of the approved wording and are intentionally literal here,
+ * Dates inside the copy are part of the approved wording and are intentionally named
+ * separately so the aptitude test date is not confused with the submission deadline,
  * not pulled from config. (The instructions PAGE keeps its own copy via env.)
  */
 
@@ -141,8 +142,8 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
                 Further to your application to ExxonMobil Affiliates in Nigeria for the following positions:
                 <strong style="color:#141414;">${titles}</strong>, you have been shortlisted to
-                complete an online computer-based aptitude and skills test on Saturday, 10th October 2026
-                as part of the selection process. Please disregard the previously communicated date, as it
+                complete an online computer-based aptitude and skills test on ${TEST_DATE_COPY}
+                as part of the selection process. Please disregard the previously communicated email, as it
                 contained an incorrect date.
               </p>
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
@@ -191,7 +192,7 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
                 <tr>
                   <td style="padding:14px 18px;font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:1.6;color:#242424;">
                     Please note that the deadline for submission is
-                    <strong style="color:#141414;">8am WAT on Saturday, 3rd October 2026</strong>. No changes
+                    <strong style="color:#141414;">${DEADLINE_EMAIL_COPY}</strong>. No changes
                     to a candidate's preferred position will be accommodated after this date and time.
                   </td>
                 </tr>
@@ -245,7 +246,7 @@ export function candidateEmailText(input: CandidateEmailInput): string {
   return [
     `Dear ${input.firstName},`,
     ``,
-    `Further to your application to ExxonMobil Affiliates in Nigeria for the following positions: ${titles}, you have been shortlisted to complete an online computer-based aptitude and skills test on Saturday, 10th October 2026 as part of the selection process. Please disregard the previously communicated date, as it contained an incorrect date.`,
+    `Further to your application to ExxonMobil Affiliates in Nigeria for the following positions: ${titles}, you have been shortlisted to complete an online computer-based aptitude and skills test on ${TEST_DATE_COPY} as part of the selection process. Please disregard the previously communicated date, as it contained an incorrect date.`,
     ``,
     para2For(input.template),
     ``,
@@ -255,7 +256,7 @@ export function candidateEmailText(input: CandidateEmailInput): string {
     ``,
     `N.B: The testing session will be conducted online, requiring a camera and microphone-enabled PC with a stable network connection. The session will also be remotely monitored, and there will be an audio-visual recording. Therefore, it is important to dress professionally during the session.`,
     ``,
-    `Please note that the deadline for submission is 8am WAT on Saturday, 3rd October 2026. No changes to a candidate's preferred position will be accommodated after this date and time.`,
+    `Please note that the deadline for submission is ${DEADLINE_EMAIL_COPY}. No changes to a candidate's preferred position will be accommodated after this date and time.`,
     ``,
     `Best regards,`,
     `Dragnet Solutions Limited`,

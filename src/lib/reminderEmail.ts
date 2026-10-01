@@ -1,3 +1,4 @@
+import { DEADLINE_EMAIL_COPY } from './campaignCopy.js';
 import { esc } from './html.js';
 
 /**
@@ -109,7 +110,7 @@ export function reminderEmailHtml(input: ReminderEmailInput): string {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fbfaf8;border:1px solid #e7e3dd;border-left:3px solid #e71615;border-radius:10px;">
                 <tr>
                   <td style="padding:14px 18px;font-family:Calibri,Arial,sans-serif;font-size:15px;line-height:1.6;color:#242424;">
-                    The deadline for submission is <strong style="color:#141414;">8am WAT on Saturday, 3rd October 2026</strong>.
+                    The deadline for submission is <strong style="color:#141414;">${DEADLINE_EMAIL_COPY}</strong>.
                     No changes to a candidate's preferred position will be accommodated after this date and time.
                   </td>
                 </tr>
@@ -155,7 +156,7 @@ export function reminderEmailText(input: ReminderEmailInput): string {
     ``,
     `Indicate your preferred position: ${input.selectionUrl}`,
     ``,
-    `The deadline for submission is 8am WAT on Saturday, 3rd October 2026. No changes to a candidate's preferred position will be accommodated after this date and time.`,
+    `The deadline for submission is ${DEADLINE_EMAIL_COPY}. No changes to a candidate's preferred position will be accommodated after this date and time.`,
     ``,
     `Best regards,`,
     `Dragnet Solutions Limited`,

@@ -31,10 +31,12 @@ describe('invitation message templates', () => {
       expect(html).toContain('Dear Adaeze,');
       expect(html).toContain('for the following positions:');
       expect(html).toContain('Process Technician and Electrical Specialist');
+      expect(html).toContain('Saturday, 10th October 2026 as part of the selection process');
       expect(html).toContain('Please disregard the previously communicated date');
       expect(html).toContain('Once you confirm your choice, it cannot be changed.');
       expect(html).toContain('remotely monitored'); // N.B. paragraph
-      expect(html).toContain('8am WAT on Saturday, 3rd October 2026');
+      expect(html).toContain('deadline for submission is <strong style="color:#141414;">8am WAT on Saturday, 3rd October 2026</strong>');
+      expect(html).not.toContain('deadline for submission is <strong style="color:#141414;">8am WAT on Saturday, 10th October 2026</strong>');
       expect(html).toContain('Best regards');
     }
     // Subject pattern is identical for both templates.

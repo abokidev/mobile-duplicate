@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { DEADLINE_DISPLAY_COPY, TEST_DATE_COPY } from './campaignCopy.js';
 
 function required(name: string): string {
   const v = process.env[name];
@@ -31,8 +32,8 @@ export const env = {
 
   // Deadline Addendum: these two are COPY ONLY. They are shown to candidates
   // to create urgency but are never checked or enforced anywhere in code.
-  deadlineDisplay: optional('DEADLINE_DISPLAY', '8:00 AM WAT, Saturday, 3rd October 2026'),
-  testDateDisplay: optional('TEST_DATE_DISPLAY', 'Saturday, 10th October 2026'),
+  deadlineDisplay: optional('DEADLINE_DISPLAY', DEADLINE_DISPLAY_COPY),
+  testDateDisplay: optional('TEST_DATE_DISPLAY', TEST_DATE_COPY),
 };
 
 export interface EmailConfig {
