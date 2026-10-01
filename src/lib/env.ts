@@ -32,7 +32,7 @@ export const env = {
   // Deadline Addendum: these two are COPY ONLY. They are shown to candidates
   // to create urgency but are never checked or enforced anywhere in code.
   deadlineDisplay: optional('DEADLINE_DISPLAY', '8:00 AM WAT, Saturday, 3rd October 2026'),
-  testDateDisplay: optional('TEST_DATE_DISPLAY', 'Saturday, 3rd October 2026'),
+  testDateDisplay: optional('TEST_DATE_DISPLAY', 'Saturday, 10th October 2026'),
 };
 
 export interface EmailConfig {

@@ -11,7 +11,7 @@ import { esc } from './html.js';
  *   - the greeting: "Dear {FirstName}," (personalised),
  *   - the shortlisted position titles inserted into paragraph 1 and the subject.
  *
- * Dates inside the copy ("Saturday, 3rd October 2026", "8am WAT on Saturday, 3rd
+ * Dates inside the copy ("Saturday, 10th October 2026", "8am WAT on Saturday, 3rd
  * October 2026") are part of the approved wording and are intentionally literal here,
  * not pulled from config. (The instructions PAGE keeps its own copy via env.)
  */
@@ -141,11 +141,9 @@ export function candidateEmailHtml(input: CandidateEmailInput): string {
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
                 Further to your application to ExxonMobil Affiliates in Nigeria for the following positions:
                 <strong style="color:#141414;">${titles}</strong>, you have been shortlisted to
-                complete an online computer-based aptitude and skills test on Saturday, 3rd October 2026
-                as part of the selection process.
-              </p>
-              <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
-                Kindly disregard the previously communicated date, as it contained an incorrect date.
+                complete an online computer-based aptitude and skills test on Saturday, 10th October 2026
+                as part of the selection process. Please disregard the previously communicated date, as it
+                contained an incorrect date.
               </p>
               <p style="font-family:Calibri,Arial,sans-serif;font-size:16px;line-height:1.65;color:#242424;margin:0 0 16px 0;">
                 ${para2}
@@ -247,9 +245,7 @@ export function candidateEmailText(input: CandidateEmailInput): string {
   return [
     `Dear ${input.firstName},`,
     ``,
-    `Further to your application to ExxonMobil Affiliates in Nigeria for the following positions: ${titles}, you have been shortlisted to complete an online computer-based aptitude and skills test on Saturday, 3rd October 2026 as part of the selection process.`,
-    ``,
-    `Kindly disregard the previously communicated date, as it contained an incorrect date.`,
+    `Further to your application to ExxonMobil Affiliates in Nigeria for the following positions: ${titles}, you have been shortlisted to complete an online computer-based aptitude and skills test on Saturday, 10th October 2026 as part of the selection process. Please disregard the previously communicated date, as it contained an incorrect date.`,
     ``,
     para2For(input.template),
     ``,
