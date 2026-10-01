@@ -4,11 +4,8 @@
  * upload page so titles in an uploaded CSV must match these exactly.
  */
 export const POSITION_TITLES = [
-  'Process Technician',
-  'Electrical Specialist',
-  'ICSR Specialist',
-  'Mechanical Specialist',
-  'Instrument Specialist',
-  'Maintenance Integrity Supervisor',
-  'Maintenance Co-ordinator',
+  'Process Safety and Risk Advisor',
+  'Facilities Engineer',
+  'Machinery Engineer',
+  'Marine Engineer'
 ] as const;
